@@ -149,7 +149,9 @@ def main():
     repo = os.environ["GITHUB_REPOSITORY"]
     token = os.environ["GITHUB_TOKEN"]
     llm_api_key = os.environ.get("LLM_API_KEY", "")
-    issue_number = int(os.environ.get("ISSUE_NUMBER", "0"))
+    # FIX: handle empty string for ISSUE_NUMBER
+    issue_number_str = os.environ.get("ISSUE_NUMBER", "0").strip()
+    issue_number = int(issue_number_str) if issue_number_str else 0
     confidence_threshold = float(os.environ.get("CONFIDENCE_THRESHOLD", "0.7"))
     dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
 
