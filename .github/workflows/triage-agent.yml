@@ -18,6 +18,16 @@ on:
         required: false
         type: string
         default: 'false'
+      llm-model:
+        description: 'LLM model name'
+        required: false
+        type: string
+        default: 'glm-4-flash'
+      llm-endpoint:
+        description: 'LLM API endpoint (OpenAI-compatible)'
+        required: false
+        type: string
+        default: 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
     secrets:
       LLM_API_KEY:
         description: 'API key for LLM service'
@@ -48,7 +58,8 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ inputs.issue-number || '' }}
           LLM_API_KEY: ${{ secrets.LLM_API_KEY || '' }}
-          LLM_MODEL: 'glm-4-flash'
+          LLM_MODEL: ${{ inputs.llm-model }}
+          LLM_ENDPOINT: ${{ inputs.llm-endpoint }}
           CONFIDENCE_THRESHOLD: ${{ inputs.confidence-threshold }}
           DRY_RUN: ${{ inputs.dry-run }}
           GITHUB_REPOSITORY: ${{ github.repository }}
