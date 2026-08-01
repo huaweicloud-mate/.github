@@ -20,6 +20,7 @@ BODY = os.environ.get("BODY", "")
 
 # 飞书 API
 FEISHU_API = "https://open.feishu.cn/open-apis"
+RECEIVE_ID_TYPE = os.environ.get("FEISHU_ID_TYPE", "user_id")  # open_id / user_id / union_id / email
 
 
 def get_tenant_token():
@@ -49,7 +50,7 @@ def send_dm(open_id, card_content):
         print("Failed to get Feishu token, skipping notification")
         return False
 
-    url = f"{FEISHU_API}/im/v1/messages?receive_id_type=open_id"
+    url = f"{FEISHU_API}/im/v1/messages?receive_id_type={RECEIVE_ID_TYPE}"
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     body = {
         "receive_id": open_id,
