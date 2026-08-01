@@ -3,9 +3,11 @@
 
 import os
 import json
+import re
 import requests
+from datetime import datetime, timezone
 
-# 飞书凭证（组织 Secrets，建仓流程已配置）
+# 飞书凭证
 FEISHU_APP_ID = os.environ.get("FEISHU_APP_ID", "")
 FEISHU_APP_SECRET = os.environ.get("FEISHU_APP_SECRET", "")
 FEISHU_ADMIN_OPEN_ID = os.environ.get("FEISHU_ADMIN_OPEN_ID", "")
@@ -18,17 +20,29 @@ ISSUE_URL = os.environ.get("ISSUE_URL", "")
 SUBJECT = os.environ.get("SUBJECT", "Issue Notification")
 BODY = os.environ.get("BODY", "")
 
-# 飞书 API
 FEISHU_API = "https://open.feishu.cn/open-apis"
-RECEIVE_ID_TYPE = os.environ.get("FEISHU_ID_TYPE", "open_id")  # open_id / user_id / union_id / email
+RECEIVE_ID_TYPE = os.environ.get("FEISHU_ID_TYPE", "open_id")
+
+COLORS = {
+    "sla.breach": "red", "sla.escalation": "red", "sla.warning": "orange",
+    "issue.created": "blue", "issue.closed": "green", "issue.stale": "yellow",
+    "report.weekly": "turquoise", "report.monthly": "turquoise",
+    "report.sla_daily": "carmine", "unknown": "grey",
+}
+
+LABELS = {
+    "sla.breach": "  SLA 违约", "sla.escalation": "  SLA 升级",
+    "sla.warning": "  SLA 预警", "issue.created": "  New Issue",
+    "issue.closed": "  Issue Closed", "issue.stale": "  Issue Stale",
+    "report.weekly": "  周报", "report.monthly": "  月报",
+    "report.sla_daily": "  SLA 日报", "unknown": "  Issue 通知",
+}
 
 
 def get_tenant_token():
-    """获取 tenant_access_token"""
     if not FEISHU_APP_ID or not FEISHU_APP_SECRET:
         print("WARNING: FEISHU_APP_ID/FEISHU_APP_SECRET not set")
         return None
-
     url = f"{FEISHU_API}/auth/v3/tenant_access_token/internal"
     data = {"app_id": FEISHU_APP_ID, "app_secret": FEISHU_APP_SECRET}
     try:
@@ -36,15 +50,13 @@ def get_tenant_token():
         result = resp.json()
         if result.get("code") == 0:
             return result.get("tenant_access_token")
-        else:
-            print(f"Feishu auth failed: code={result.get('code')}, msg={result.get('msg')}")
+        print(f"Feishu auth failed: code={result.get('code')}, msg={result.get('msg')}")
     except Exception as e:
         print(f"Feishu auth error: {e}")
     return None
 
 
 def send_dm(open_id, card_content):
-    """发送飞书私信卡片"""
     token = get_tenant_token()
     if not token:
         print("Failed to get Feishu token, skipping notification")
@@ -69,70 +81,173 @@ def send_dm(open_id, card_content):
     return False
 
 
-def build_card(event_type, subject, body, issue_url, issue_number, issue_title):
-    """根据事件类型构建飞书卡片"""
-    color_map = {
-        "sla.breach": "red",
-        "sla.escalation": "red",
-        "sla.warning": "orange",
-        "issue.created": "blue",
-        "issue.closed": "green",
-        "issue.stale": "yellow",
-        "report.weekly": "turquoise",
-        "report.monthly": "turquoise",
-        "report.sla_daily": "carmine",
-        "unknown": "grey",
-    }
+def _split_sections(body):
+    """将 Markdown 报告拆分为 section 列表"""
+    lines = body.strip().split('\n')
+    sections = []
+    current = {"heading": "", "lines": []}
 
-    emoji_map = {
-        "sla.breach": "  SLA 违约",
-        "sla.escalation": "  SLA 升级",
-        "sla.warning": "  SLA 预警",
-        "issue.created": "  New Issue",
-        "issue.closed": "  Issue Closed",
-        "issue.stale": "  Issue Stale",
-        "report.weekly": "  周报",
-        "report.monthly": "  月报",
-        "report.sla_daily": "  SLA 日报",
-        "unknown": "  Issue 通知",
-    }
+    for line in lines:
+        if line.startswith('### '):
+            if current["lines"]:
+                sections.append(current)
+            current = {"heading": line[4:].strip(), "lines": []}
+        elif line.startswith('## '):
+            if current["lines"]:
+                sections.append(current)
+            current = {"heading": line[3:].strip(), "lines": []}
+        elif line.startswith('- '):
+            current["lines"].append(line)
+        elif line.startswith('|'):
+            current["lines"].append(line)
+        elif line.strip() == '':
+            if current["lines"]:
+                sections.append(current)
+                current = {"heading": current["heading"], "lines": []}
+        else:
+            current["lines"].append(line)
 
-    color = color_map.get(event_type, "grey")
-    header_title = emoji_map.get(event_type, "  Issue 通知")
+    if current["lines"]:
+        sections.append(current)
 
-    card = {
+    return sections
+
+
+def _md_table_to_lark(table_lines):
+    """将 Markdown 表格转为飞书 lark_md 格式"""
+    result = []
+    body_rows = []
+    header_row = None
+
+    for line in table_lines:
+        line = line.strip().strip('|')
+        if re.match(r'^[\-:\s|]+$', line):
+            continue
+        cells = [c.strip() for c in line.split('|')]
+        if header_row is None:
+            header_row = cells
+        else:
+            body_rows.append(cells)
+
+    if not header_row:
+        return ""
+
+    result.append("**" + " | ".join(header_row) + "**")
+    result.append("-" * (sum(len(c) for c in header_row) + 3 * (len(header_row) - 1)))
+
+    for row in body_rows:
+        row_text = " | ".join(row)
+        if any(w in row_text for w in ['超时', '违约', '预警', 'SLA', '0']):
+            row_text = "**" + row_text.replace("**", "") + "**"
+        result.append(row_text)
+
+    return "\n".join(result)
+
+
+def _build_alert_card(event_type, body, issue_url, issue_number, issue_title):
+    """构建告警类卡片（Issue 事件）"""
+    color = COLORS.get(event_type, "grey")
+    header_title = LABELS.get(event_type, "  Issue 通知")
+
+    elements = [{"tag": "markdown", "content": body}]
+
+    if issue_url:
+        elements.append({
+            "tag": "action",
+            "actions": [{
+                "tag": "button",
+                "text": {"tag": "plain_text", "content": f"查看 Issue #{issue_number}"},
+                "type": "primary",
+                "url": issue_url,
+            }]
+        })
+
+    elements.append({
+        "tag": "note",
+        "elements": [{"tag": "plain_text", "content": "huaweicloud-mate Issue Bot"}]
+    })
+
+    return {
         "config": {"wide_screen_mode": True},
         "header": {"title": {"tag": "plain_text", "content": header_title}, "template": color},
-        "elements": [
-            {"tag": "markdown", "content": body},
-        ],
+        "elements": elements,
     }
 
-    # Issue 相关事件添加链接按钮
-    if issue_url:
-        card["elements"].append(
-            {
-                "tag": "action",
-                "actions": [
-                    {
-                        "tag": "button",
-                        "text": {"tag": "plain_text", "content": f"查看 Issue #{issue_number}"},
-                        "type": "primary",
-                        "url": issue_url,
-                    }
-                ],
-            }
-        )
 
-    card["elements"].append(
-        {"tag": "note", "elements": [{"tag": "plain_text", "content": "huaweicloud-mate Issue Bot"}]}
-    )
+def _build_report_card(event_type, subject, body):
+    """构建报表类卡片"""
+    color = COLORS.get(event_type, "turquoise")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    sections = _split_sections(body)
 
-    return card
+    elements = []
+
+    for i, section in enumerate(sections):
+        heading = section["heading"]
+        lines = section["lines"]
+
+        if not heading or not lines:
+            continue
+
+        # section 标题
+        elements.append({
+            "tag": "markdown",
+            "content": f"**▎{heading}**"
+        })
+
+        content_lines = []
+
+        # 检测是否是表格
+        if len(lines) >= 2 and lines[0].startswith('|') and lines[1].startswith('|'):
+            table_text = _md_table_to_lark(lines)
+            if table_text:
+                content_lines.append(table_text)
+        else:
+            for line in lines:
+                if line.startswith('- '):
+                    content_lines.append(line)
+                else:
+                    content_lines.append(line)
+
+        md_content = "\n".join(content_lines)
+        if md_content.strip():
+            elements.append({
+                "tag": "markdown",
+                "content": md_content
+            })
+
+        if i < len(sections) - 1:
+            elements.append({"tag": "hr"})
+
+    elements.append({"tag": "hr"})
+    elements.append({
+        "tag": "note",
+        "elements": [
+            {"tag": "plain_text", "content": f"生成时间: {now}  ·  huaweicloud-mate Issue Bot"}
+        ]
+    })
+
+    return {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": subject},
+            "template": color,
+        },
+        "elements": elements,
+    }
+
+
+def is_report_event(event_type):
+    return event_type and event_type.startswith("report.")
+
+
+def build_card(event_type, subject, body, issue_url=None, issue_number=None, issue_title=None):
+    if is_report_event(event_type):
+        return _build_report_card(event_type, subject, body)
+    return _build_alert_card(event_type, body, issue_url, issue_number, issue_title)
 
 
 def send_notification(subject, body, open_ids=None, event_type=None):
-    """发送飞书通知，主入口函数"""
     if not open_ids:
         open_ids = []
     if not FEISHU_APP_ID or not FEISHU_APP_SECRET:
@@ -156,15 +271,11 @@ def send_notification(subject, body, open_ids=None, event_type=None):
         if send_dm(open_id, card):
             print(f"Feishu notification sent to {open_id}")
             success_count += 1
-
     return success_count > 0
 
 
 def main():
-    open_ids = []
-    if FEISHU_ADMIN_OPEN_ID:
-        open_ids.append(FEISHU_ADMIN_OPEN_ID)
-
+    open_ids = [FEISHU_ADMIN_OPEN_ID] if FEISHU_ADMIN_OPEN_ID else []
     send_notification(SUBJECT, BODY, open_ids, EVENT)
 
 
