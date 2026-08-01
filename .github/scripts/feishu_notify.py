@@ -35,6 +35,8 @@ def get_tenant_token():
         result = resp.json()
         if result.get("code") == 0:
             return result.get("tenant_access_token")
+        else:
+            print(f"Feishu auth failed: code={result.get('code')}, msg={result.get('msg')}")
     except Exception as e:
         print(f"Feishu auth error: {e}")
     return None
