@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""合并统计 + 生成报表 + 发送邮件"""
+"""合并统计 + 生成报表 + 飞书通知"""
 
 import os
 import sys
 import json
 from datetime import datetime, timezone
-from email_notify import send_email
+from feishu_notify import send_notification
 
 
 def load_data(env_var):
@@ -185,11 +185,9 @@ def main():
 
     print(report)
 
-    # 发送邮件
-    admin_emails = [e.strip() for e in os.environ.get("EMAIL_ADMIN_LIST", "").split(",") if e.strip()]
-    if admin_emails:
-        html_body = f"<html><body><pre style='font-family: Consolas, monospace;'>{report}</pre></body></html>"
-        send_email(admin_emails, subject, html_body)
+    # 发送飞书通知
+    event_type = "report.monthly" if report_type == "monthly" else "report.weekly"
+    send_notification(subject=subject, body=report, event_type=event_type)
 
 
 if __name__ == "__main__":

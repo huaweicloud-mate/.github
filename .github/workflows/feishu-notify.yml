@@ -1,4 +1,4 @@
-name: Issue Email Notify
+name: Feishu Notify
 
 on:
   issues:
@@ -11,33 +11,26 @@ on:
       issue_number:
         required: true
         type: number
-      assignee:
-        required: false
-        type: string
       subject:
         required: true
         type: string
       body:
         required: true
         type: string
-      to_emails:
-        required: false
-        type: string
-        default: ""
     secrets:
-      SENDGRID_API_KEY:
+      FEISHU_APP_ID:
         required: true
-      EMAIL_FROM:
+      FEISHU_APP_SECRET:
         required: true
-      EMAIL_ADMIN_LIST:
-        required: false
+      FEISHU_ADMIN_OPEN_ID:
+        required: true
 
 permissions:
   issues: read
   contents: read
 
 jobs:
-  email-notify:
+  notify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,19 +41,17 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pyyaml sendgrid
+        run: pip install requests
 
-      - name: Send Notification
+      - name: Send Feishu Notification
         env:
           EVENT: ${{ inputs.event || github.event_name }}
           ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title || '' }}
           ISSUE_URL: ${{ github.event.issue.html_url || '' }}
-          ASSIGNEE: ${{ inputs.assignee || '' }}
           SUBJECT: ${{ inputs.subject || '' }}
           BODY: ${{ inputs.body || '' }}
-          TO_EMAILS: ${{ inputs.to_emails || '' }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY || secrets.SENDGRID_API_KEY }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM || secrets.EMAIL_FROM }}
-          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST || secrets.EMAIL_ADMIN_LIST }}
-        run: python scripts/email_notify.py
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID || secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET || secrets.FEISHU_APP_SECRET }}
+          FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID || secrets.FEISHU_ADMIN_OPEN_ID }}
+        run: python scripts/feishu_notify.py

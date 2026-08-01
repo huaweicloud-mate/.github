@@ -9,8 +9,8 @@ Issue Bot 触发 → 自动打标签（分类/优先级/领域）+ 自动分配�
     ↓
 SLA 计时开始 → 根据 priority 设定响应/解决时限
     ↓
-├── 超时未响应 → SLA 告警（标签 + email 通知管理员/负责人）
-├── 超时未解决 → 升级告警（打 escalation 标签 + email）
+├── 超时未响应 → SLA 告警（标签 + 飞书通知管理员）
+├── 超时未解决 → 升级告警（打 escalation 标签 + 飞书通知）
     ↓
 正常流转：status/pending → status/triaged → status/in-progress → status/resolved → status/completed
     ↓
@@ -18,7 +18,7 @@ SLA 计时开始 → 根据 priority 设定响应/解决时限
     │   ├── GitHub Issues 统计（仓库维度）
     │   └── GitCode Issues 统计抓取 + 汇总
     │       ↓
-    │   合并报表 → email 发送给管理员
+    │   合并报表 → 飞书发送给管理员
     ↓
 过期 Issue 定期扫描（stale bot）→ 打 stale 标签 → 14 天无更新 → 自动关闭
 ```
@@ -112,38 +112,40 @@ stale bot 检测 → 打 status/stale 标签 + 评论提醒
 
 ---
 
-## 三、Issue 通知（Email）
+## 三、Issue 通知（飞书）
 
 ### 通知触发场景
 
 | 场景 | 接收人 | 频率 |
 |------|--------|------|
-| Issue 新建 + 已分类 | 分配的负责人 | 实时 |
-| SLA 即将超时（24h 预警） | 负责人 + 管理员 | 实时 |
-| SLA 已超时 | 负责人 + 管理员 + 技术主管 | 实时（单次） |
-| Stale 即将关闭 | 负责人 | 实时 |
-| Issue 被关闭 | 创建者 | 实时 |
+| Issue 新建 + 已分类 | 管理员 | 实时 |
+| SLA 即将超时（24h 预警） | 管理员 | 实时 |
+| SLA 已超时 | 管理员 | 实时（单次） |
+| Stale 即将关闭 | 管理员 | 实时 |
+| Issue 被关闭 | 管理员 | 实时 |
 
-### 邮件通知实现
+### 飞书通知实现
 
 ```
 GitHub Actions workflow
     ↓
-调用组织级 reusable workflow: email-notify.yml
+调用组织级 reusable workflow: feishu-notify.yml
     ↓
-使用 SendGrid / GitHub Actions Email 发送
+使用飞书 Open API 发送 DM 卡片消息
     ↓
-组织 Secrets: SENDGRID_API_KEY + EMAIL_FROM + EMAIL_ADMIN_LIST
+组织 Secrets: FEISHU_APP_ID + FEISHU_APP_SECRET + FEISHU_ADMIN_OPEN_ID
+    ↓
+复用建仓流程已有 Secret，无需额外配置
 ```
 
 ### 关键文件
 
 | 文件 | 仓库 | 作用 |
 |------|------|------|
-| `workflows/email-notify.yml` | `.github` | 可复用邮件通知工作流 |
-| `scripts/email_notify.py` | `.github` | 邮件发送脚本 |
-| `configs/email-rules.yml` | `.github` | 通知规则配置 |
-| `workflows/issue-notify.yml` | 各仓库 | Issue 事件 → 邮件通知触发 |
+| `workflows/feishu-notify.yml` | `.github` | 可复用飞书通知工作流 |
+| `scripts/feishu_notify.py` | `.github` | 飞书通知发送脚本 |
+| `configs/feishu-rules.yml` | `.github` | 通知规则配置 |
+| `workflows/issue-notify.yml` | 各仓库 | Issue 事件 → 飞书通知触发 |
 
 ---
 
@@ -164,7 +166,7 @@ gh-stats workflow → 并行执行
     ↓
 合并数据 → 生成报表
     ↓
-email 发送给管理员列表
+飞书通知管理员
 ```
 
 ### GitCode 统计抓取
@@ -202,7 +204,7 @@ email 发送给管理员列表
 | `workflows/issue-stats.yml` | `.github` | 统计报表触发器 |
 | `scripts/github_stats.py` | `.github` | GitHub Issue 统计脚本 |
 | `scripts/gitcode_stats.py` | `.github` | GitCode Issue 统计脚本 |
-| `scripts/stats_report.py` | `.github` | 合并 + 生成报表+ 发送邮件 |
+| `scripts/stats_report.py` | `.github` | 合并 + 生成报表 + 飞书通知 |
 
 ---
 
@@ -278,15 +280,15 @@ Issue 创建 → 记录 created_at
 SLA Monitor workflow（每小时运行一次）
     ↓
 扫描所有未关闭 Issue
-    ├── 首次响应超时（无回复/无分配）→ 打 label:sla/breach + email 管理员
-    ├── 解决超时（超过解决时限）→ 打 label:sla/breach + label:escalation + email 技术主管
-    └── 即将超时（剩余 < 24h）→ 打 label:sla/warning + email 负责人
+    ├── 首次响应超时（无回复/无分配）→ 打 label:sla/breach + 飞书通知管理员
+    ├── 解决超时（超过解决时限）→ 打 label:sla/breach + label:escalation + 飞书通知
+    └── 即将超时（剩余 < 24h）→ 打 label:sla/warning + 飞书通知
 ```
 
-### SLA 告警邮件内容
+### SLA 告警飞书卡片
 
 ```
-主题：[SLA ⚠️] Issue #42 首次响应超时
+标题: [SLA] Issue #42 首次响应超时
 
 Issue: huaweicloud-mate/xxx-repo#42
 标题: API 接口 500 错误
@@ -328,13 +330,13 @@ Issue: huaweicloud-mate/xxx-repo#42
 | `workflows/stale.yml` | `.github` | Stale 检测 |
 | `workflows/status-transition.yml` | `.github` | 状态流转 |
 | `workflows/sla-monitor.yml` | `.github` | SLA 监控（每小时） |
-| `workflows/issue-notify.yml` | `.github` | Issue 事件邮件通知 |
-| `workflows/email-notify.yml` | `.github` | 可复用邮件发送 |
+| `workflows/issue-notify.yml` | `.github` | Issue 事件飞书通知 |
+| `workflows/feishu-notify.yml` | `.github` | 可复用飞书通知 |
 | `workflows/issue-stats.yml` | `.github` | 统计报表触发 |
 | `workflows/weekly-report.yml` | `.github` | 周报触发 |
 | `workflows/monthly-report.yml` | `.github` | 月报触发 |
 | `workflows/sla-daily.yml` | `.github` | SLA 日报触发 |
-| `scripts/email_notify.py` | `.github` | 邮件发送 |
+| `scripts/feishu_notify.py` | `.github` | 飞书通知发送 |
 | `scripts/sla_monitor.py` | `.github` | SLA 检测+告警 |
 | `scripts/github_stats.py` | `.github` | GitHub 统计 |
 | `scripts/gitcode_stats.py` | `.github` | GitCode 统计抓取 |
@@ -342,7 +344,7 @@ Issue: huaweicloud-mate/xxx-repo#42
 | `configs/triage-rules.yml` | `.github` | 分类规则配置 |
 | `configs/stale-rules.yml` | `.github` | 过期规则配置 |
 | `configs/sla-rules.yml` | `.github` | SLA 时限配置 |
-| `configs/email-rules.yml` | `.github` | 邮件通知规则 |
+| `configs/feishu-rules.yml` | `.github` | 飞书通知规则 |
 | `templates/report-weekly.md` | `.github` | 周报模板 |
 | `templates/report-monthly.md` | `.github` | 月报模板 |
 
@@ -350,13 +352,15 @@ Issue: huaweicloud-mate/xxx-repo#42
 
 ## 八、组织 Secrets
 
-| Secret | 用途 |
-|--------|------|
-| `SENDGRID_API_KEY` | 邮件发送 |
-| `EMAIL_FROM` | 发件人地址 |
-| `EMAIL_ADMIN_LIST` | 管理员邮件列表（逗号分隔） |
-| `GITCODE_TOKEN` | GitCode API 访问（统计抓取用，已有） |
-| `GITHUB_TOKEN` | GitHub API 访问（默认提供） |
+| Secret | 用途 | 来源 |
+|--------|------|------|
+| `FEISHU_APP_ID` | 飞书应用 ID（通知用） | 已有（建仓流程已配置） |
+| `FEISHU_APP_SECRET` | 飞书应用密钥 | 已有（建仓流程已配置） |
+| `FEISHU_ADMIN_OPEN_ID` | 飞书管理员 open_id | 已有（建仓流程已配置） |
+| `GITCODE_TOKEN` | GitCode API 访问（统计抓取用） | 已有（建仓流程已配置） |
+| `GITHUB_TOKEN` | GitHub API 访问 | 默认提供 |
+
+> 通知使用飞书，无需额外配置 SendGrid 等邮件服务，复用建仓流程已有的飞书 Secret 即可。
 
 ---
 

@@ -7,7 +7,7 @@ import json
 import yaml
 import requests
 from datetime import datetime, timedelta, timezone
-from email_notify import send_email  # noqa: E402  (called in same dir)
+from feishu_notify import send_notification
 
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "huaweicloud-mate")
@@ -255,14 +255,14 @@ def main():
                     print(f"[{repo_full}#{issue['number']}] Added labels: {new_labels}")
 
     # 发送日报
-    if all_results:
+    if all_results and REPORT_ONLY:
         report = generate_daily_report(all_results)
-        if REPORT_ONLY:
-            print(report)
-            subject = f"[SLA 日报] {datetime.now(timezone.utc).strftime('%Y-%m-%d')}"
-            admin_emails = [e.strip() for e in os.environ.get("EMAIL_ADMIN_LIST", "").split(",") if e.strip()]
-            if admin_emails:
-                send_email(admin_emails, subject, f"<html><body><pre>{report}</pre></body></html>")
+        print(report)
+        send_notification(
+            subject=f"[SLA 日报] {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+            body=report,
+            event_type="report.sla_daily",
+        )
 
     # 汇总
     total = len(all_results)

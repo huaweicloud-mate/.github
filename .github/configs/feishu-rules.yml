@@ -1,0 +1,55 @@
+# 飞书通知规则配置
+
+# 接收人 open_id（从组织 Secrets 读取）
+recipients:
+  admin: "${{ secrets.FEISHU_ADMIN_OPEN_ID }}"
+
+# 通知规则
+rules:
+  - event: "issue.created"
+    description: "Issue 新建并完成 triage 后通知"
+    recipients: ["admin"]
+    color: "blue"
+
+  - event: "sla.warning"
+    description: "SLA 即将超时预警"
+    recipients: ["admin"]
+    color: "orange"
+
+  - event: "sla.breach"
+    description: "SLA 已超时告警"
+    recipients: ["admin"]
+    color: "red"
+
+  - event: "sla.escalation"
+    description: "SLA 升级告警"
+    recipients: ["admin"]
+    color: "red"
+
+  - event: "issue.stale"
+    description: "Issue 即将过期提醒"
+    recipients: ["admin"]
+    color: "yellow"
+
+  - event: "issue.closed"
+    description: "Issue 已关闭通知"
+    recipients: ["admin"]
+    color: "green"
+
+  - event: "report.weekly"
+    description: "周报"
+    recipients: ["admin"]
+    color: "turquoise"
+
+  - event: "report.monthly"
+    description: "月报"
+    recipients: ["admin"]
+    color: "turquoise"
+
+  - event: "report.sla_daily"
+    description: "SLA 日报"
+    recipients: ["admin"]
+    color: "carmine"
+
+# 卡片颜色映射说明
+# blue/red/orange/yellow/green/turquoise/carmine/purple/violet/grey

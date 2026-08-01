@@ -1,5 +1,5 @@
 <!--
-  周报模板 - 由 stats_report.py 渲染后通过邮件发送
+  周报模板 - 由 stats_report.py 渲染后通过飞书发送
   此模板仅作为参考，实际内容由脚本动态生成
 -->
 ## huaweicloud-mate Issues 周报

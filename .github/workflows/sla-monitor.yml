@@ -33,7 +33,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
           TARGET_REPO: ${{ inputs.repo || '' }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST }}
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
         run: python scripts/sla_monitor.py

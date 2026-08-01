@@ -21,14 +21,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install pyyaml requests sendgrid
+        run: pip install pyyaml requests
 
       - name: Collect and Generate Weekly Report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
           REPORT_TYPE: "weekly"
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST }}
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
         run: python scripts/stats_report.py --type weekly
