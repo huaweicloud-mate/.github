@@ -20,7 +20,7 @@ BODY = os.environ.get("BODY", "")
 
 # 飞书 API
 FEISHU_API = "https://open.feishu.cn/open-apis"
-RECEIVE_ID_TYPE = os.environ.get("FEISHU_ID_TYPE", "user_id")  # open_id / user_id / union_id / email
+RECEIVE_ID_TYPE = os.environ.get("FEISHU_ID_TYPE", "open_id")  # open_id / user_id / union_id / email
 
 
 def get_tenant_token():
