@@ -1,0 +1,29 @@
+name: GitCode Issue Triage
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # 每 6 小时
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run GitCode Triage
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_ORG: "hd-vector"
+        run: python .github/scripts/gitcode_triage.py

@@ -1,0 +1,29 @@
+name: GitCode Stale Management
+
+on:
+  schedule:
+    - cron: "0 3 * * *"     # 每天 UTC 03:00
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run GitCode Stale Bot
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_ORG: "hd-vector"
+        run: python .github/scripts/gitcode_stale.py
