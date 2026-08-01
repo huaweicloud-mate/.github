@@ -29,7 +29,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
         run: |
-          python scripts/github_stats.py > github_stats.json
+          python .github/scripts/github_stats.py > github_stats.json
           echo "result=$(cat github_stats.json)" >> $GITHUB_OUTPUT
 
   gitcode-stats:
@@ -50,7 +50,7 @@ jobs:
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
           GITCODE_ORG: "hd-vector"
         run: |
-          python scripts/gitcode_stats.py > gitcode_stats.json
+          python .github/scripts/gitcode_stats.py > gitcode_stats.json
           echo "result=$(cat gitcode_stats.json)" >> $GITHUB_OUTPUT
 
   merge-and-report:
@@ -73,4 +73,4 @@ jobs:
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python scripts/stats_report.py
+        run: python .github/scripts/stats_report.py

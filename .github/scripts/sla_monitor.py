@@ -21,7 +21,7 @@ REPORT_ONLY = "--report" in sys.argv
 
 
 def load_sla_config():
-    with open("configs/sla-rules.yml", "r", encoding="utf-8") as f:
+    with open(".github/configs/sla-rules.yml", "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 

@@ -71,4 +71,4 @@ jobs:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID || secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET || secrets.FEISHU_APP_SECRET }}
           FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID || secrets.FEISHU_ADMIN_OPEN_ID }}
-        run: python scripts/feishu_notify.py
+        run: python .github/scripts/feishu_notify.py
