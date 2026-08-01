@@ -60,6 +60,13 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Diagnose Feishu User
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID || secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET || secrets.FEISHU_APP_SECRET }}
+          FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID || secrets.FEISHU_ADMIN_OPEN_ID }}
+        run: python .github/scripts/feishu_diag.py
+
       - name: Send Feishu Notification
         env:
           EVENT: ${{ inputs.event || github.event_name }}
