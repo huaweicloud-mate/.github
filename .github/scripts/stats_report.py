@@ -160,17 +160,25 @@ def main():
 
     # 如果数据为空，尝试从文件读取
     if not github_data:
-        try:
-            with open("github_stats.json", "r") as f:
-                github_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        for path in ["output/github_stats.json", "github_stats.json"]:
+            try:
+                with open(path, "r") as f:
+                    github_data = json.load(f)
+                    break
+            except (FileNotFoundError, json.JSONDecodeError):
+                continue
+        if not github_data:
             github_data = {"totals": {}, "repos": [], "type_totals": {}, "sla_totals": {}}
 
     if not gitcode_data:
-        try:
-            with open("gitcode_stats.json", "r") as f:
-                gitcode_data = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
+        for path in ["output/gitcode_stats.json", "gitcode_stats.json"]:
+            try:
+                with open(path, "r") as f:
+                    gitcode_data = json.load(f)
+                    break
+            except (FileNotFoundError, json.JSONDecodeError):
+                continue
+        if not gitcode_data:
             gitcode_data = {"projects": [], "summary": {}}
 
     # 生成报告

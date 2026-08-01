@@ -8,69 +8,48 @@ on:
 permissions:
   issues: read
   contents: read
-  actions: read
 
 jobs:
-  github-stats:
+  stats:
     runs-on: ubuntu-latest
-    outputs:
-      github_data: ${{ steps.github.outputs.result }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install dependencies
         run: pip install pyyaml requests
+
       - name: Collect GitHub Stats
         id: github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
         run: |
-          python .github/scripts/github_stats.py > github_stats.json
-          echo "result=$(cat github_stats.json)" >> $GITHUB_OUTPUT
+          mkdir -p output
+          python .github/scripts/github_stats.py > output/github_stats.json
 
-  gitcode-stats:
-    runs-on: ubuntu-latest
-    outputs:
-      gitcode_data: ${{ steps.gitcode.outputs.result }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install pyyaml requests
       - name: Collect GitCode Stats
-        id: gitcode
         env:
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
           GITCODE_ORG: "hd-vector"
-        run: |
-          python .github/scripts/gitcode_stats.py > gitcode_stats.json
-          echo "result=$(cat gitcode_stats.json)" >> $GITHUB_OUTPUT
+        run: python .github/scripts/gitcode_stats.py > output/gitcode_stats.json
 
-  merge-and-report:
-    needs: [github-stats, gitcode-stats]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        run: pip install pyyaml requests
       - name: Generate and Send Report
         env:
-          GITHUB_DATA: ${{ needs.github-stats.outputs.github_data }}
-          GITCODE_DATA: ${{ needs.gitcode-stats.outputs.gitcode_data }}
-          REPORT_TYPE: "weekly"
+          GITHUB_DATA: ${{ env.github_output || '' }}
+          GITCODE_DATA: ${{ env.gitcode_output || '' }}
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python .github/scripts/stats_report.py
+
+      - name: Upload Stats Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-stats
+          path: output/
