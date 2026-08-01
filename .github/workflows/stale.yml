@@ -1,0 +1,44 @@
+name: Stale Issue Management
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 每天 UTC 02:00
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load stale rules
+        id: config
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const yaml = require('js-yaml');
+            const config = yaml.load(fs.readFileSync('configs/stale-rules.yml', 'utf8'));
+            return config;
+
+      - name: Run Stale Check
+        uses: actions/stale@v9
+        with:
+          days-before-stale: 90
+          days-before-close: 14
+          stale-issue-label: "status/stale"
+          close-issue-label: "status/completed"
+          exempt-issue-labels: "status/in-progress,request/create-repo,depends-on"
+          stale-issue-message: |
+            该 Issue 已长时间无更新，将在 14 天后自动关闭。
+            如需继续跟踪，请回复或移除 `status/stale` 标签。
+          close-issue-message: |
+            该 Issue 因长时间无活动已自动关闭。
+            如仍存在此问题，请重新打开或创建新 Issue。
+          operations-per-run: 50
+          enable-statistics: true

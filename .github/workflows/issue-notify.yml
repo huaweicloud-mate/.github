@@ -1,0 +1,82 @@
+name: Issue Notify
+
+on:
+  issues:
+    types: [opened, closed, labeled]
+
+permissions:
+  issues: read
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine notification event
+        id: event
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const action = context.payload.action;
+            const labels = context.payload.issue?.labels?.map(l => l.name) || [];
+            const issueData = {
+              number: context.issue.number,
+              title: context.payload.issue?.title || '',
+              url: context.payload.issue?.html_url || '',
+              user: context.payload.issue?.user?.login || '',
+              assignees: context.payload.issue?.assignees?.map(a => a.login) || []
+            };
+
+            let event = 'unknown';
+            let subject = '';
+            let body = '';
+            let to = '';
+
+            if (action === 'opened') {
+              event = 'issue.created';
+              subject = `[新 Issue] #${issueData.number}: ${issueData.title}`;
+              body = `新建 Issue\n标题: ${issueData.title}\n创建者: ${issueData.user}\n链接: ${issueData.url}`;
+              to = '';
+            } else if (action === 'closed') {
+              event = 'issue.closed';
+              subject = `[已关闭] #${issueData.number}: ${issueData.title}`;
+              body = `Issue 已关闭\n标题: ${issueData.title}\n链接: ${issueData.url}`;
+              to = issueData.user;
+            } else if (action === 'labeled') {
+              const newLabel = context.payload.label?.name || '';
+              if (newLabel === 'sla/breach') {
+                event = 'sla.breach';
+                subject = `[SLA 违约] #${issueData.number}: ${issueData.title}`;
+                body = `Issue SLA 已超时\n标题: ${issueData.title}\n链接: ${issueData.url}`;
+              } else if (newLabel === 'sla/warning') {
+                event = 'sla.warning';
+                subject = `[SLA 预警] #${issueData.number}: ${issueData.title}`;
+                body = `Issue SLA 即将超时\n标题: ${issueData.title}\n链接: ${issueData.url}`;
+              } else if (newLabel === 'escalation') {
+                event = 'sla.escalation';
+                subject = `[升级] #${issueData.number}: ${issueData.title}`;
+                body = `Issue 已升级\n标题: ${issueData.title}\n链接: ${issueData.url}`;
+              } else if (newLabel === 'status/stale') {
+                event = 'issue.stale';
+                subject = `[即将过期] #${issueData.number}: ${issueData.title}`;
+                body = `Issue 即将过期\n标题: ${issueData.title}\n链接: ${issueData.url}`;
+              }
+            }
+
+            return JSON.stringify({ event, subject, body, to, ...issueData });
+
+      - name: Send Email Notification
+        if: fromJson(steps.event.outputs.result).event != 'unknown'
+        uses: huaweicloud-mate/.github/.github/workflows/email-notify.yml@main
+        with:
+          event: ${{ fromJson(steps.event.outputs.result).event }}
+          issue_number: ${{ fromJson(steps.event.outputs.result).number }}
+          subject: ${{ fromJson(steps.event.outputs.result).subject }}
+          body: ${{ fromJson(steps.event.outputs.result).body }}
+          to_emails: ${{ fromJson(steps.event.outputs.result).to }}
+        secrets:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST }}

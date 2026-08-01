@@ -1,0 +1,87 @@
+# Issue Triage 分类规则配置
+
+# 标签映射规则
+label_rules:
+  - keywords: ["bug", "错误", "crash", "崩溃", "报错", "异常"]
+    label: "type/bug"
+    priority_hint: "high"
+
+  - keywords: ["feature", "功能", "新增", "enhancement", "建议", "希望"]
+    label: "type/feature"
+    priority_hint: "medium"
+
+  - keywords: ["doc", "文档", "documentation", "readme", "说明"]
+    label: "type/documentation"
+    priority_hint: "low"
+
+  - keywords: ["question", "问题", "咨询", "请教", "how to", "怎么"]
+    label: "type/question"
+    priority_hint: "medium"
+
+# 优先级判断规则
+priority_rules:
+  - keywords: ["urgent", "紧急", "线上", "production", "p0", "宕机", "crash", "数据丢失"]
+    label: "priority/critical"
+
+  - keywords: ["important", "重要", "严重影响", "blocker", "阻塞"]
+    label: "priority/high"
+
+  - keywords: ["minor", "一般", "优化", "improve"]
+    label: "priority/low"
+
+  # 默认
+  - keywords: []
+    label: "priority/medium"
+
+# 领域映射
+area_rules:
+  - keywords: ["api", "接口", "rest", "endpoint"]
+    label: "area/api"
+
+  - keywords: ["web", "前端", "frontend", "ui", "页面", "界面"]
+    label: "area/web"
+
+  - keywords: ["ci", "cd", "pipeline", "workflow", "action", "构建", "部署", "deploy"]
+    label: "area/ci-cd"
+
+  - keywords: ["sdk", "client", "library", "包", "依赖"]
+    label: "area/sdk"
+
+  - keywords: ["security", "安全", "漏洞", "vulnerability"]
+    label: "area/security"
+
+  - keywords: ["performance", "性能", "慢", "优化", "perf"]
+    label: "area/performance"
+
+  - keywords: ["database", "数据库", "存储", "storage", "db"]
+    label: "area/database"
+
+# 负责人映射
+assignee_rules:
+  - area: "area/api"
+    assignee: "api-maintainer"
+
+  - area: "area/web"
+    assignee: "web-maintainer"
+
+  - area: "area/ci-cd"
+    assignee: "devops-maintainer"
+
+  - area: "area/sdk"
+    assignee: "sdk-maintainer"
+
+  - area: "area/security"
+    assignee: "security-maintainer"
+
+  - area: "area/performance"
+    assignee: "performance-maintainer"
+
+  - area: "area/database"
+    assignee: "database-maintainer"
+
+  - type: "type/bug"
+    priority: "priority/critical"
+    assignee: "tech-lead"
+
+  - area: "default"
+    assignee: "default-triage"

@@ -1,0 +1,76 @@
+# SLA 时限配置
+
+# 首次响应时限
+response:
+  priority/critical:
+    hours: 4
+    description: "4 小时内首次响应"
+  priority/high:
+    hours: 8
+    description: "8 小时内首次响应"
+  priority/medium:
+    hours: 24
+    description: "24 小时内首次响应"
+  priority/low:
+    hours: 48
+    description: "48 小时内首次响应"
+
+# 解决时限（工作日）
+resolution:
+  priority/critical:
+    workdays: 1
+    description: "1 个工作日内解决"
+  priority/high:
+    workdays: 3
+    description: "3 个工作日内解决"
+  priority/medium:
+    workdays: 7
+    description: "7 个工作日内解决"
+  priority/low:
+    workdays: 30
+    description: "30 个工作日内解决"
+
+# 升级时限
+escalation:
+  priority/critical:
+    hours: 8
+    description: "8 小时未解决则升级"
+  priority/high:
+    hours: 24
+    description: "24 小时未解决则升级"
+  priority/medium:
+    workdays: 3
+    description: "3 个工作日未解决则升级"
+  priority/low:
+    workdays: 14
+    description: "14 个工作日未解决则升级"
+
+# 预警时间
+warning:
+  hours_before_deadline: 24
+  label: "sla/warning"
+
+# 违约标签
+breach:
+  label: "sla/breach"
+
+# 升级标签
+escalation:
+  label: "escalation"
+
+# 通知接收人
+notify:
+  breach:
+    roles: ["assignee", "admin", "tech-lead"]
+  warning:
+    roles: ["assignee", "admin"]
+  escalation:
+    roles: ["assignee", "admin", "tech-lead", "manager"]
+
+# SLA 达标率目标
+target:
+  overall: 90
+  priority/critical: 100
+  priority/high: 95
+  priority/medium: 90
+  priority/low: 85

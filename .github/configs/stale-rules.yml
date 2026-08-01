@@ -1,0 +1,57 @@
+# Stale Issue 过期规则配置
+
+# 默认全局设置
+default:
+  days_until_stale: 90
+  days_until_close: 14
+  stale_label: "status/stale"
+  close_label: "status/completed"
+
+# 按标签差异化配置
+rules:
+  - labels: ["type/bug"]
+    days_until_stale: 60
+    days_until_close: 14
+
+  - labels: ["type/feature"]
+    days_until_stale: 90
+    days_until_close: 14
+
+  - labels: ["type/question"]
+    days_until_stale: 30
+    days_until_close: 7
+
+  - labels: ["type/documentation"]
+    days_until_stale: 180
+    days_until_close: 14
+
+  - labels: ["priority/critical"]
+    days_until_stale: 365
+    days_until_close: 30
+
+  - labels: ["priority/high"]
+    days_until_stale: 180
+    days_until_close: 14
+
+  - labels: ["sla/breach", "escalation"]
+    days_until_stale: 365
+    days_until_close: 30
+
+# 排除条件（不打 stale 标签）
+exempt:
+  labels:
+    - "status/in-progress"
+    - "request/create-repo"
+    - depends-on
+
+  milestones: true
+
+# Stale 评论模板
+stale_comment: |
+  该 Issue 已长时间无更新，将在 {days_until_close} 天后自动关闭。
+  如需继续跟踪，请回复或移除 `status/stale` 标签。
+
+# 关闭评论模板
+close_comment: |
+  该 Issue 因长时间无活动已自动关闭。
+  如仍存在此问题，请重新打开或创建新 Issue。

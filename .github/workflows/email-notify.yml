@@ -1,0 +1,66 @@
+name: Issue Email Notify
+
+on:
+  issues:
+    types: [opened, closed, labeled]
+  workflow_call:
+    inputs:
+      event:
+        required: true
+        type: string
+      issue_number:
+        required: true
+        type: number
+      assignee:
+        required: false
+        type: string
+      subject:
+        required: true
+        type: string
+      body:
+        required: true
+        type: string
+      to_emails:
+        required: false
+        type: string
+        default: ""
+    secrets:
+      SENDGRID_API_KEY:
+        required: true
+      EMAIL_FROM:
+        required: true
+      EMAIL_ADMIN_LIST:
+        required: false
+
+permissions:
+  issues: read
+  contents: read
+
+jobs:
+  email-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyyaml sendgrid
+
+      - name: Send Notification
+        env:
+          EVENT: ${{ inputs.event || github.event_name }}
+          ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title || '' }}
+          ISSUE_URL: ${{ github.event.issue.html_url || '' }}
+          ASSIGNEE: ${{ inputs.assignee || '' }}
+          SUBJECT: ${{ inputs.subject || '' }}
+          BODY: ${{ inputs.body || '' }}
+          TO_EMAILS: ${{ inputs.to_emails || '' }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY || secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM || secrets.EMAIL_FROM }}
+          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST || secrets.EMAIL_ADMIN_LIST }}
+        run: python scripts/email_notify.py

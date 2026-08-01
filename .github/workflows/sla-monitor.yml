@@ -1,0 +1,39 @@
+name: SLA Monitor
+
+on:
+  schedule:
+    - cron: "0 * * * *"     # 每小时
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "指定仓库 (owner/repo)，留空扫描所有"
+        required: false
+
+permissions:
+  issues: write
+  contents: read
+  actions: read
+
+jobs:
+  sla-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run SLA Monitor
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: "huaweicloud-mate"
+          TARGET_REPO: ${{ inputs.repo || '' }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: python scripts/sla_monitor.py

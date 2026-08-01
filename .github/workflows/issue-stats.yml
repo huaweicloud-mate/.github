@@ -1,0 +1,76 @@
+name: Issue Statistics
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"    # 每周一 UTC 09:00
+  workflow_dispatch:
+
+permissions:
+  issues: read
+  contents: read
+  actions: read
+
+jobs:
+  github-stats:
+    runs-on: ubuntu-latest
+    outputs:
+      github_data: ${{ steps.github.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml requests
+      - name: Collect GitHub Stats
+        id: github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: "huaweicloud-mate"
+        run: |
+          python scripts/github_stats.py > github_stats.json
+          echo "result=$(cat github_stats.json)" >> $GITHUB_OUTPUT
+
+  gitcode-stats:
+    runs-on: ubuntu-latest
+    outputs:
+      gitcode_data: ${{ steps.gitcode.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml requests
+      - name: Collect GitCode Stats
+        id: gitcode
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_ORG: "hd-vector"
+        run: |
+          python scripts/gitcode_stats.py > gitcode_stats.json
+          echo "result=$(cat gitcode_stats.json)" >> $GITHUB_OUTPUT
+
+  merge-and-report:
+    needs: [github-stats, gitcode-stats]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install pyyaml requests sendgrid
+      - name: Generate and Send Report
+        env:
+          GITHUB_DATA: ${{ needs.github-stats.outputs.github_data }}
+          GITCODE_DATA: ${{ needs.gitcode-stats.outputs.gitcode_data }}
+          REPORT_TYPE: "weekly"
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_ADMIN_LIST: ${{ secrets.EMAIL_ADMIN_LIST }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/stats_report.py

@@ -1,0 +1,70 @@
+# 邮件通知规则配置
+
+# 发送方式
+sender:
+  provider: "sendgrid"
+  from: "${{ secrets.EMAIL_FROM }}"
+  from_name: "huaweicloud-mate Issue Bot"
+
+# 通知规则
+rules:
+  - event: "issue.created"
+    description: "Issue 新建并完成 triage 后通知"
+    to_roles: ["assignee"]
+    template: "issue-assigned"
+    throttle: "once"
+
+  - event: "sla.warning"
+    description: "SLA 即将超时预警"
+    to_roles: ["assignee", "admin"]
+    template: "sla-warning"
+    throttle: "once_per_issue"
+
+  - event: "sla.breach"
+    description: "SLA 已超时告警"
+    to_roles: ["assignee", "admin", "tech-lead"]
+    template: "sla-breach"
+    throttle: "once"
+
+  - event: "sla.escalation"
+    description: "SLA 升级告警"
+    to_roles: ["assignee", "admin", "tech-lead", "manager"]
+    template: "sla-escalation"
+    throttle: "once"
+
+  - event: "issue.stale"
+    description: "Issue 即将过期提醒"
+    to_roles: ["assignee"]
+    template: "stale-warning"
+    throttle: "once"
+
+  - event: "issue.closed"
+    description: "Issue 已关闭通知"
+    to_roles: ["creator"]
+    template: "issue-closed"
+    throttle: "once"
+
+  - event: "report.weekly"
+    description: "周报"
+    to_roles: ["admin", "tech-lead"]
+    template: "report-weekly"
+
+  - event: "report.monthly"
+    description: "月报"
+    to_roles: ["admin", "tech-lead", "manager", "team"]
+    template: "report-monthly"
+
+  - event: "report.sla_daily"
+    description: "SLA 日报"
+    to_roles: ["admin"]
+    template: "sla-daily"
+
+# 角色 → 邮箱映射（可在 secrets 中覆盖）
+roles:
+  admin: "${{ secrets.EMAIL_ADMIN_LIST }}"
+  tech-lead: "${{ secrets.EMAIL_TECH_LEAD }}"      # 技术负责人
+  manager: "${{ secrets.EMAIL_TECH_LEAD }}"          # 经理
+  team: "${{ secrets.EMAIL_ADMIN_LIST }}"            # 团队全员（暂无）
+
+# 模板在 templates/email 目录下
+template_dir: "templates/email"

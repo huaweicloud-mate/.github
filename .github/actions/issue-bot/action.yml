@@ -1,0 +1,28 @@
+name: "Issue Bot"
+description: "Auto-label and assign issues"
+inputs:
+  github_token:
+    description: "GitHub Token"
+    required: true
+  config_path:
+    description: "Path to triage config"
+    required: false
+    default: "configs/triage-rules.yml"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      shell: bash
+      run: pip install pyyaml requests
+
+    - name: Run Issue Bot
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        CONFIG_PATH: ${{ inputs.config_path }}
+      run: python ${{ github.action_path }}/issue_bot.py
