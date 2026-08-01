@@ -8,6 +8,7 @@ import yaml
 import requests
 from datetime import datetime, timedelta, timezone
 from feishu_notify import send_notification
+from email_notify import send_email
 
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "huaweicloud-mate")
@@ -254,7 +255,7 @@ def main():
                     add_labels(repo_full, issue["number"], new_labels)
                     print(f"[{repo_full}#{issue['number']}] Added labels: {new_labels}")
 
-    # 发送日报
+    # 发送飞书日报 + 邮件
     if all_results and REPORT_ONLY:
         report = generate_daily_report(all_results)
         print(report)
@@ -263,6 +264,7 @@ def main():
             body=report,
             event_type="report.sla_daily",
         )
+        send_email(subject=f"[SLA 日报] huaweicloud-mate {datetime.now(timezone.utc).strftime('%Y-%m-%d')}", body=report)
 
     # 汇总
     total = len(all_results)

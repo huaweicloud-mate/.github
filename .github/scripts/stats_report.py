@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""合并统计 + 生成报表 + 飞书通知"""
+"""合并统计 + 生成报表 + 飞书通知 + 邮件报告"""
 
 import os
 import sys
 import json
 from datetime import datetime, timezone
 from feishu_notify import send_notification
+from email_notify import send_email
 
 
 def load_data(env_var):
@@ -196,6 +197,9 @@ def main():
     # 发送飞书通知
     event_type = "report.monthly" if report_type == "monthly" else "report.weekly"
     send_notification(subject=subject, body=report, event_type=event_type)
+
+    # 发送邮件报告
+    send_email(subject=subject, body=report)
 
 
 if __name__ == "__main__":
