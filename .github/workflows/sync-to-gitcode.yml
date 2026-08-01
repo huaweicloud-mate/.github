@@ -1,0 +1,28 @@
+name: Sync to GitCode
+
+on:
+  workflow_call:
+    secrets:
+      GITCODE_USERNAME:
+        required: true
+      GITCODE_TOKEN:
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Mirror to GitCode
+        run: |
+          REPO_NAME=$(basename "${{ github.repository }}")
+          GITCODE_URL="https://${{ secrets.GITCODE_USERNAME }}:${{ secrets.GITCODE_TOKEN }}@gitcode.com/hd-vector/${REPO_NAME}.git"
+          git remote add gitcode "${GITCODE_URL}" || git remote set-url gitcode "${GITCODE_URL}"
+          git push gitcode --all --force
+          git push gitcode --tags --force
