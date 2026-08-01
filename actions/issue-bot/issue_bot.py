@@ -5,6 +5,7 @@ Powered by GitHub App authentication
 
 Capabilities:
 - Auto-triage new issues (classify type, priority, area)
+- Send Feishu notification for repo creation requests
 - Respond to slash commands in comments (/assign, /priority, /label, /close, /reopen)
 - Greet first-time contributors
 - Detect stale issues
@@ -32,14 +33,11 @@ def jwt_encode(payload, private_key_pem):
     def base64url(data):
         return b64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
     
-    # Header
     header = {"alg": "RS256", "typ": "JWT"}
     header_b64 = base64url(json.dumps(header, separators=(',', ':')).encode())
     
-    # Payload
     payload_b64 = base64url(json.dumps(payload, separators=(',', ':')).encode())
     
-    # Sign
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding
     
@@ -62,14 +60,13 @@ def get_app_installation_token(app_id, private_key_pem, installation_id):
     """Get an installation access token for the GitHub App"""
     now = int(time.time())
     payload = {
-        "iat": now - 60,  # issued at (60s in past for clock drift)
-        "exp": now + 600,  # expires in 10 min
+        "iat": now - 60,
+        "exp": now + 600,
         "iss": int(app_id)
     }
     
     token_jwt = jwt_encode(payload, private_key_pem)
     
-    # Get installation token
     url = f"https://api.github.com/app/installations/{installation_id}/access_tokens"
     headers = {
         "Authorization": f"Bearer {token_jwt}",
@@ -111,6 +108,138 @@ def github_api(method, path, token, data=None):
 
 
 # ============================================================
+# Feishu Notification
+# ============================================================
+
+def get_feishu_token(app_id, app_secret):
+    """Get Feishu tenant access token"""
+    url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+    headers = {"Content-Type": "application/json; charset=utf-8"}
+    data = {"app_id": app_id, "app_secret": app_secret}
+    body = json.dumps(data).encode()
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read())
+            return result.get("tenant_access_token")
+    except Exception as e:
+        print(f"Feishu auth error: {e}", file=sys.stderr)
+        return None
+
+
+def send_feishu_dm(open_id, content, app_id, app_secret):
+    """Send a direct message to a Feishu user"""
+    token = get_feishu_token(app_id, app_secret)
+    if not token:
+        print("Failed to get Feishu token", file=sys.stderr)
+        return False
+
+    url = f"https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json; charset=utf-8"
+    }
+    body = {
+        "receive_id": open_id,
+        "msg_type": "interactive",
+        "content": json.dumps(content, ensure_ascii=False)
+    }
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read())
+            if result.get("code") == 0:
+                print("Feishu notification sent successfully")
+                return True
+            print(f"Feishu send error: {result}", file=sys.stderr)
+            return False
+    except Exception as e:
+        print(f"Feishu send exception: {e}", file=sys.stderr)
+        return False
+
+
+def notify_repo_request(issue, repo_full):
+    """Send Feishu notification for new repo creation request"""
+    app_id = os.environ.get("FEISHU_APP_ID", "")
+    app_secret = os.environ.get("FEISHU_APP_SECRET", "")
+    admin_open_id = os.environ.get("FEISHU_ADMIN_OPEN_ID", "")
+
+    if not all([app_id, app_secret, admin_open_id]):
+        print("Feishu credentials not configured, skipping notification")
+        return
+
+    issue_number = issue.get("number", 0)
+    title = issue.get("title", "")
+    author = issue.get("user", {}).get("login", "")
+    body = issue.get("body", "") or ""
+    html_url = issue.get("html_url", "")
+
+    fields = {"仓库名称": "", "仓库描述": "", "可见性": "", "主要编程语言": ""}
+    sections = re.split(r'### ', body)
+    for section in sections[1:]:
+        lines = section.strip().split('\n')
+        if not lines:
+            continue
+        name = lines[0].strip()
+        value = '\n'.join(lines[1:]).strip() if len(lines) > 1 else ''
+        if value == '_No response_':
+            value = ''
+        if name in fields:
+            fields[name] = value
+
+    card = {
+        "config": {"wide_screen_mode": True},
+        "header": {
+            "title": {"tag": "plain_text", "content": "🏗️ 新建仓库申请"},
+            "template": "blue"
+        },
+        "elements": [
+            {
+                "tag": "markdown",
+                "content": f"**{author}** 提交了一个新的建仓申请，请审核。"
+            },
+            {
+                "tag": "div",
+                "fields": [
+                    {"is_short": True, "text": {"tag": "lark_md", "content": f"**仓库名称**\n{fields.get('仓库名称', 'N/A')}"}},
+                    {"is_short": True, "text": {"tag": "lark_md", "content": f"**可见性**\n{fields.get('可见性', 'N/A')}"}},
+                    {"is_short": True, "text": {"tag": "lark_md", "content": f"**编程语言**\n{fields.get('主要编程语言', 'N/A')}"}},
+                    {"is_short": True, "text": {"tag": "lark_md", "content": f"**仓库描述**\n{fields.get('仓库描述', 'N/A')}"}},
+                ]
+            },
+            {
+                "tag": "hr"
+            },
+            {
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {"tag": "plain_text", "content": "查看详情"},
+                        "type": "primary",
+                        "url": html_url
+                    },
+                    {
+                        "tag": "button",
+                        "text": {"tag": "plain_text", "content": "审批通过（打标签）"},
+                        "type": "default",
+                        "url": f"{html_url}#partial-new-comment-form"
+                    }
+                ]
+            },
+            {
+                "tag": "note",
+                "elements": [
+                    {"tag": "plain_text", "content": f"issue-bot · #{issue_number} · {repo_full}"}
+                ]
+            }
+        ]
+    }
+
+    send_feishu_dm(admin_open_id, card, app_id, app_secret)
+
+
+# ============================================================
 # Issue Triage Logic
 # ============================================================
 
@@ -119,7 +248,6 @@ def classify_issue(title, body, labels):
     text = f"{title}\n{body or ''}".lower()
     result = {"type": None, "priority": None, "area": None, "greeting": None}
     
-    # Type classification
     if any(w in text for w in ['bug', 'error', 'crash', 'broken', 'fail', 'exception', 'traceback', 'fix']):
         result["type"] = "bug"
     elif any(w in text for w in ['feature', 'request', 'add', 'support', 'enhance', 'improve', 'new']):
@@ -132,7 +260,6 @@ def classify_issue(title, body, labels):
         result["type"] = "bug"
         result["priority"] = "priority/critical"
     
-    # Priority classification
     if not result["priority"]:
         if any(w in text for w in ['critical', 'urgent', 'emergency', 'production down', 'data loss']):
             result["priority"] = "priority/critical"
@@ -149,7 +276,6 @@ def classify_issue(title, body, labels):
         else:
             result["priority"] = "priority/medium"
     
-    # Area classification
     if any(w in text for w in ['sdk', 'api', 'client', 'library']):
         result["area"] = "area/sdk"
     elif any(w in text for w in ['ui', 'frontend', 'web', 'dashboard', 'interface']):
@@ -172,15 +298,17 @@ def is_first_time_contributor(author, repo, token):
     return False
 
 
+def is_repo_request(body):
+    """Check if the issue is a repo creation request"""
+    return "### 仓库名称" in (body or "")
+
+
 # ============================================================
 # Slash Command Handler
 # ============================================================
 
 def handle_slash_command(command, args, issue_number, repo, token, commenter):
     """Handle slash commands in issue comments"""
-    # Only org members and repo collaborators can use commands
-    # (In production, check membership; here we allow all for demo)
-    
     responses = {
         "assign": handle_assign,
         "priority": handle_priority,
@@ -197,14 +325,12 @@ def handle_slash_command(command, args, issue_number, repo, token, commenter):
 
 
 def handle_assign(args, issue_number, repo, token, commenter):
-    """Assign the issue to a user"""
     assignee = args.strip().lstrip('@') if args.strip() else commenter
     github_api("POST", f"/repos/{repo}/issues/{issue_number}/assignees", token, {"assignees": [assignee]})
     return f"Assigned @{assignee} to this issue."
 
 
 def handle_priority(args, issue_number, repo, token, commenter):
-    """Set priority label"""
     priority_map = {
         "critical": "priority/critical",
         "high": "priority/high",
@@ -216,7 +342,6 @@ def handle_priority(args, issue_number, repo, token, commenter):
     if not label:
         return f"Invalid priority: `{level}`. Use: critical, high, medium, low"
     
-    # Remove existing priority labels
     issue = github_api("GET", f"/repos/{repo}/issues/{issue_number}", token)
     if isinstance(issue, dict) and "labels" in issue:
         for lbl in issue["labels"]:
@@ -228,7 +353,6 @@ def handle_priority(args, issue_number, repo, token, commenter):
 
 
 def handle_label(args, issue_number, repo, token, commenter):
-    """Add a label"""
     labels = [l.strip() for l in args.split(',') if l.strip()]
     if not labels:
         return "Usage: `/label label1, label2`"
@@ -237,19 +361,16 @@ def handle_label(args, issue_number, repo, token, commenter):
 
 
 def handle_close(args, issue_number, repo, token, commenter):
-    """Close the issue"""
     github_api("PATCH", f"/repos/{repo}/issues/{issue_number}", token, {"state": "closed", "state_reason": "completed"})
     return "Issue closed."
 
 
 def handle_reopen(args, issue_number, repo, token, commenter):
-    """Reopen the issue"""
     github_api("PATCH", f"/repos/{repo}/issues/{issue_number}", token, {"state": "open"})
     return "Issue reopened."
 
 
 def handle_help(args, issue_number, repo, token, commenter):
-    """Show help"""
     return """**Available commands:**
 - `/assign @user` — Assign issue to user (defaults to yourself)
 - `/priority <level>` — Set priority (critical/high/medium/low)
@@ -275,16 +396,18 @@ def handle_issue_opened(event, token):
     author = issue.get("user", {}).get("login", "")
     existing_labels = [l["name"] for l in issue.get("labels", [])]
     
-    # Skip if already triaged
     if "agent/triaged" in existing_labels:
         print(f"Issue #{issue_number} already triaged, skipping")
         return
+
+    # Send Feishu notification for repo creation requests
+    if is_repo_request(body):
+        print(f"Repo creation request detected, sending Feishu notification")
+        notify_repo_request(issue, repo)
     
-    # Classify
     classification = classify_issue(title, body, existing_labels)
     print(f"Classification: {json.dumps(classification, ensure_ascii=False)}")
     
-    # Build labels to add
     labels_to_add = ["agent/triaged"]
     if classification["type"]:
         labels_to_add.append(classification["type"])
@@ -293,11 +416,9 @@ def handle_issue_opened(event, token):
     if classification["area"]:
         labels_to_add.append(classification["area"])
     
-    # Add labels
     github_api("POST", f"/repos/{repo}/issues/{issue_number}/labels", token, {"labels": labels_to_add})
     print(f"Added labels: {labels_to_add}")
     
-    # Build triage comment
     parts = ["### 🤖 Issue Bot\n"]
     parts.append(f"**分类结果：**\n")
     if classification["type"]:
@@ -312,7 +433,6 @@ def handle_issue_opened(event, token):
     comment = "".join(parts)
     github_api("POST", f"/repos/{repo}/issues/{issue_number}/comments", token, {"body": comment})
     
-    # Greet first-time contributors
     if is_first_time_contributor(author, repo, token):
         greeting = f"👋 Welcome @{author}! Thanks for your first issue in this repo. We'll triage it shortly."
         github_api("POST", f"/repos/{repo}/issues/{issue_number}/comments", token, {"body": greeting})
@@ -328,16 +448,13 @@ def handle_issue_comment(event, token):
     body = comment.get("body", "")
     commenter = comment.get("user", {}).get("login", "")
     
-    # Only process slash commands
     if not body.startswith('/'):
         return
     
-    # Parse command
     parts = body.strip().split(None, 1)
     command = parts[0].lstrip('/')
     args = parts[1] if len(parts) > 1 else ""
     
-    # Skip bot's own comments
     if comment.get("performed_via_github_app"):
         return
     
@@ -349,7 +466,6 @@ def handle_issue_comment(event, token):
 
 
 def main():
-    # Read event
     event_path = os.environ.get("GITHUB_EVENT_PATH", "")
     if not event_path or not os.path.exists(event_path):
         print("No event payload found")
@@ -361,7 +477,6 @@ def main():
     event_action = os.environ.get("GITHUB_EVENT_NAME", "")
     print(f"Event: {event_action}")
     
-    # Authenticate as GitHub App
     app_id = os.environ.get("APP_ID", "")
     private_key = os.environ.get("APP_PRIVATE_KEY", "")
     installation_id = os.environ.get("APP_INSTALLATION_ID", "")
@@ -380,13 +495,11 @@ def main():
         print("No token available, exiting")
         return
     
-    # Dispatch event
     if event_action == "issues":
         action = event.get("action", "")
         if action == "opened":
             handle_issue_opened(event, token)
         elif action == "edited":
-            # Re-triage on edit if not already triaged
             handle_issue_opened(event, token)
         else:
             print(f"Unhandled issues action: {action}")
