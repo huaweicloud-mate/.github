@@ -3,42 +3,41 @@
 ## 完整流程
 
 ```
-Issue 创建
+Issue 创建（GitHub / GitCode）
     ↓
-Issue Bot 触发 → 自动打标签（分类/优先级/领域）+ 自动分配负责人
-    ↓
-SLA 计时开始 → 根据 priority 设定响应/解决时限
-    ↓
-├── 超时未响应 → SLA 告警（标签 + 飞书通知管理员）
-├── 超时未解决 → 升级告警（打 escalation 标签 + 飞书通知）
-    ↓
-正常流转：status/pending → status/triaged → status/in-progress → status/resolved → status/completed
-    ↓
-定期触发（每周/月）→ 统计报表
-    │   ├── GitHub Issues 统计（仓库维度）
-    │   └── GitCode Issues 统计抓取 + 汇总
-    │       ↓
-    │   合并报表 → 飞书发送给管理员
-    ↓
-过期 Issue 定期扫描（stale bot）→ 打 stale 标签 → 14 天无更新 → 自动关闭
+┌─────────────────── GitHub ───────────────────┐  ┌──────────────── GitCode ──────────────────┐
+│                                               │  │                                           │
+│ Issue Bot → 自动打标签 + 分配负责人            │  │ gitcode_triage → API 打标签 + 评论         │
+│     ↓                                         │  │     ↓                                     │
+│ SLA 计时开始                                  │  │ SLA 计时开始                              │
+│     ↓                                         │  │     ↓                                     │
+│ 超时 → 打 sla/breach + 飞书卡片 + 邮件        │  │ 超时 → 飞书卡片 + 邮件                     │
+│ 升级 → escalation + 飞书 + 邮件               │  │ 升级 → 飞书 + 邮件                         │
+│     ↓                                         │  │     ↓                                     │
+│ 正常流转: pending → triaged → in-progress     │  │ Stale: N 天无更新 → 打 stale → 14天关闭    │
+│           → resolved → completed              │  │                                           │
+│     ↓                                         │  │                                           │
+│ Stale Bot → 打 stale → 14 天自动关闭          │  │                                           │
+│     ↓                                         │  │                                           │
+│ 周报/月报/SLA日报 → 飞书卡片 + HTML 邮件      │  │ 合并到同一报表                             │
+└───────────────────────────────────────────────┘  └───────────────────────────────────────────┘
 ```
 
-## 一、Issue 分类 / Triage
+---
+
+## 一、GitHub Issue 分类 / Triage
 
 ### 触发方式
-- Issue Bot（`.github/actions/issue-bot/`）在 Issue 创建时自动运行
-- 复用建仓流程中已有的 `issue-bot` 脚本，扩展分类能力
+- Issue Bot（`actions/issue-bot/`）在 Issue 创建时自动运行（已有，含飞书审批通知、斜杠命令）
+- `triage-issue.yml` 通过 `issue-bot` Action 扩展分类能力
 
 ### 自动打标签规则
 
 | 触发条件 | 标签 | 说明 |
 |---------|------|------|
-| 使用 bug_report 模板 | `type/bug` | 根据模板自动识别 |
-| 使用 feature_request 模板 | `type/feature` | 根据模板自动识别 |
-| 标题含 `doc`/`文档` | `type/documentation` | 关键字匹配 |
-| 标题含 `question`/`问题` | `type/question` | 关键字匹配 |
-| AI 分析 Issue 正文 | `priority/critical` `priority/high` `priority/medium` `priority/low` | 关键词 + 严重性判断 |
-| 根据文件路径/标签匹配 | `area/*` | 领域分类（如 area/api, area/web, area/ci-cd...） |
+| 标题/正文含关键词 | `type/bug` `type/feature` `type/documentation` `type/question` | 关键字匹配 |
+| 严重性关键词 | `priority/critical` `priority/high` `priority/medium` `priority/low` | 自动分析 |
+| 领域关键词 | `area/api` `area/web` `area/ci-cd` 等 | 根据 `triage-rules.yml` |
 
 ### 自动分配负责人
 
@@ -52,159 +51,140 @@ SLA 计时开始 → 根据 priority 设定响应/解决时限
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `actions/issue-bot/issue_bot.py` | `.github` | Issue Bot 核心脚本（分类+分配） |
-| `configs/triage-rules.yml` | `.github` | 分类规则配置（标签映射、负责人映射） |
-| `workflows/triage-issue.yml` | `.github` | Issue Triage 触发器 |
+| 文件 | 作用 |
+|------|------|
+| `actions/issue-bot/issue_bot.py` | Issue Bot 核心脚本（已有） |
+| `configs/triage-rules.yml` | 分类规则（标签/负责人映射） |
+| `workflows/triage-issue.yml` | Triage 触发器 |
 
 ---
 
-## 二、Issue 生命周期
+## 二、GitHub Issue 生命周期
 
 ### 状态流转
 
 ```
 status/pending          → Issue 新建，待 triage
 status/triaged          → 已分类 + 已分配
-status/in-progress      → 开发中（负责人自行标记 / PR 关联自动标记）
-status/resolved         → 已修复（关联 PR 合并后自动标记）
-status/completed        → 已验证 / 管理员手动关闭
+status/in-progress      → 开发中（PR 关联自动标记）
+status/resolved         → 已修复（PR 合并自动标记）
+status/completed        → 已验证 / 管理员关闭
 ```
 
-### 自动状态转换规则
+### 自动状态转换
 
-| 事件 | 状态变更 | 触发方式 |
+| 事件 | 状态变更 | 触发 |
+|------|---------|------|
+| Issue Bot 分类完成 | `pending` → `triaged` | Issue Bot |
+| PR 链接 Fixes/Closes #N | `triaged` → `in-progress` | GitHub 联动 |
+| 关联 PR 合并 | `in-progress` → `resolved` | workflow |
+| 手动关闭 | 任意 → `completed` | 管理员 |
+
+### Stale 处理
+
+| 类型 | 过期天数 | 关闭缓冲 |
 |------|---------|---------|
-| Issue Bot 分类完成 | `pending` → `triaged` | Issue Bot 自动 |
-| PR 链接到 Issue（Fixes/Closes #N） | `triaged` → `in-progress` | GitHub 原生联动 |
-| 关联 PR 合并 | `in-progress` → `resolved` | 合并后 workflow |
-| 管理员手动关闭 | `resolved` → `completed` | 管理员操作 |
-| 无关联 PR 直接关闭 | 任意 → `completed` | 管理员操作 |
-
-### Stale Issue 处理
-
-```
-Issue 持续 N 天无更新
-    ↓
-stale bot 检测 → 打 status/stale 标签 + 评论提醒
-    ↓
-14 天内无更新
-    ↓
-自动关闭 → status/completed + 评论说明
-```
-
-| 标签 | 过期天数 |
-|------|---------|
-| `type/bug` | 60 天 |
-| `type/feature` | 90 天 |
-| `type/question` | 30 天 |
-| `type/documentation` | 180 天 |
-| `priority/critical` | 365 天（不轻易关闭） |
+| `type/bug` | 60 天 | 14 天 |
+| `type/feature` | 90 天 | 14 天 |
+| `type/question` | 30 天 | 7 天 |
+| `type/documentation` | 180 天 | 14 天 |
+| `priority/critical` | 365 天 | 30 天 |
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `workflows/stale.yml` | `.github` | Stale bot 工作流 |
-| `configs/stale-rules.yml` | `.github` | 各类型过期天数配置 |
-| `workflows/status-transition.yml` | `.github` | 状态自动流转工作流 |
+| 文件 | 作用 |
+|------|------|
+| `workflows/stale.yml` | Stale bot 工作流 |
+| `configs/stale-rules.yml` | 过期天数配置 |
+| `workflows/status-transition.yml` | 状态流转工作流 |
 
 ---
 
-## 三、Issue 通知（飞书）
+## 三、通知系统（飞书 + 邮件）
 
-### 通知触发场景
+### 双通道通知
 
-| 场景 | 接收人 | 频率 |
-|------|--------|------|
-| Issue 新建 + 已分类 | 管理员 | 实时 |
-| SLA 即将超时（24h 预警） | 管理员 | 实时 |
-| SLA 已超时 | 管理员 | 实时（单次） |
-| Stale 即将关闭 | 管理员 | 实时 |
-| Issue 被关闭 | 管理员 | 实时 |
+所有事件同时发送飞书卡片和 HTML 邮件：
 
-### 飞书通知实现
+| 事件 | 飞书 | 邮件 |
+|------|:---:|:---:|
+| Issue 新建/关闭 | 分段卡片 | HTML |
+| SLA 预警/违约/升级 | 卡片 + 按钮 | HTML |
+| Issue 即将过期 (stale) | 卡片 | HTML |
+| 周报/月报/SLA日报 | 分段卡片+表格 | HTML 表格 |
 
-```
-GitHub Actions workflow
-    ↓
-调用组织级 reusable workflow: feishu-notify.yml
-    ↓
-使用飞书 Open API 发送 DM 卡片消息
-    ↓
-组织 Secrets: FEISHU_APP_ID + FEISHU_APP_SECRET + FEISHU_ADMIN_OPEN_ID
-    ↓
-复用建仓流程已有 Secret，无需额外配置
-```
+### 飞书通知
+
+- 通过飞书 Open API 发送 DM 卡片消息
+- 报表：分段结构化卡片，表格用 `lark_md` 渲染
+- 告警：颜色区分（红=违约, 橙=预警, 蓝=新建, 绿=关闭）
+- 管理员：ou_f3d92a9ef16eba823ed80e8107fb3763（张爽）
+
+### 邮件通知
+
+- 通过 SMTP（QQ 邮箱 `smtp.qq.com:587`）发送
+- HTML 格式：蓝色渐变标题栏、交替行颜色表格、红色标记超时数据
+- 收件人：114271379@qq.com
+- 后续可按维护者邮箱映射分发
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `workflows/feishu-notify.yml` | `.github` | 可复用飞书通知工作流 |
-| `scripts/feishu_notify.py` | `.github` | 飞书通知发送脚本 |
-| `configs/feishu-rules.yml` | `.github` | 通知规则配置 |
-| `workflows/issue-notify.yml` | 各仓库 | Issue 事件 → 飞书通知触发 |
+| 文件 | 作用 |
+|------|------|
+| `workflows/feishu-notify.yml` | 可复用飞书+邮件通知工作流 |
+| `workflows/issue-notify.yml` | Issue 事件 → 通知触发 |
+| `scripts/feishu_notify.py` | 飞书卡片发送 |
+| `scripts/email_notify.py` | SMTP 邮件发送（Markdown→HTML） |
+| `configs/feishu-rules.yml` | 通知规则配置 |
 
 ---
 
-## 四、Issue 跨平台统计（GitCode）
+## 四、GitCode Issue 自动化管理
 
 ### 说明
-- **不做同步**，仅定期抓取 GitCode 对应仓库的 Issue 数据进行统计汇总
-- 统计结果合并到 GitHub Issue 报表中
+- GitCode Issue **在 GitCode 原生平台独立管理**，不同步到 GitHub
+- 通过 GitCode API（GitLab 兼容）远程操作标签、评论、状态
+- `hd-vector` 组织下所有仓库自动覆盖
 
-### 流程
+### 功能模块
 
-```
-每周一 09:00 UTC 触发
-    ↓
-gh-stats workflow → 并行执行
-    ├── GitHub Issues 统计（所有 huaweicloud-mate 仓库）
-    └── GitCode Issues 统计（hd-vector 下所有仓库）
-    ↓
-合并数据 → 生成报表
-    ↓
-飞书通知管理员
-```
+| 模块 | 频率 | 功能 |
+|------|------|------|
+| **Triage** | 每 6 小时 | 扫描新 Issue → 关键字分类 → API 打标签 + 评论 |
+| **SLA 监控** | 每小时 | 超时检测 → 飞书 + 邮件告警 |
+| **SLA 日报** | 工作日 08:00 | 超时 Issue 清单 → 飞书 + 邮件 |
+| **Stale 管理** | 每天 | 过期 Issue 打 stale → 14 天后 API 关闭 |
 
-### GitCode 统计抓取
+### GitCode Triage 分类规则
 
-```
-使用 GitCode Open API 获取 Issues
-    ↓
-按仓库聚合统计：
-  - Issue 总数 / 已开启 / 已关闭
-  - 按标签分布
-  - 按创建者分布
-  - 平均响应时间
-  - 平均解决时间
-    ↓
-与 GitHub 数据合并输出
-```
+与 GitHub 规则一致：
+- `type/bug`：bug, 错误, crash, 崩溃, 报错
+- `type/feature`：feature, 功能, 新增, enhancement
+- `type/question`：question, 问题, 咨询
+- `type/documentation`：doc, 文档, documentation
+- 优先级：critical(urgent/紧急) → high(important/重要) → low(minor/优化) → 默认 medium
 
-### 统计维度
+### GitCode Stale 规则
 
-| 维度 | GitHub | GitCode | 汇总 |
-|------|--------|---------|------|
-| Issue 总数 | ✅ | ✅ | ✅ |
-| 开启数 | ✅ | ✅ | ✅ |
-| 关闭数 | ✅ | ✅ | ✅ |
-| 按类型分布 | ✅ | ✅ | ✅ |
-| 按优先级分布 | ✅ | ✅ | ✅ |
-| 平均响应时间 | ✅ | ✅ | ✅ |
-| 平均解决时间 | ✅ | ✅ | ✅ |
-| SLA 达标率 | ✅ | ❌ | ✅ |
+| 类型 | 过期天数 | 关闭缓冲 |
+|------|---------|---------|
+| `type/bug` | 60 天 | 14 天 |
+| `type/feature` | 90 天 | 14 天 |
+| `type/question` | 30 天 | 14 天 |
+| `type/documentation` | 180 天 | 14 天 |
+| `priority/critical` | 365 天 | 14 天 |
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `workflows/issue-stats.yml` | `.github` | 统计报表触发器 |
-| `scripts/github_stats.py` | `.github` | GitHub Issue 统计脚本 |
-| `scripts/gitcode_stats.py` | `.github` | GitCode Issue 统计脚本 |
-| `scripts/stats_report.py` | `.github` | 合并 + 生成报表 + 飞书通知 |
+| 文件 | 作用 |
+|------|------|
+| `workflows/gitcode-triage.yml` | GitCode Triage 触发器 |
+| `workflows/gitcode-sla.yml` | GitCode SLA 监控 + 日报 |
+| `workflows/gitcode-stale.yml` | GitCode Stale 管理 |
+| `scripts/gitcode_triage.py` | GitCode 分类打标签脚本 |
+| `scripts/gitcode_sla.py` | GitCode SLA 检测脚本 |
+| `scripts/gitcode_stale.py` | GitCode 过期关闭脚本 |
+| `scripts/gitcode_stats.py` | GitCode 统计抓取（周报用） |
 
 ---
 
@@ -212,162 +192,111 @@ gh-stats workflow → 并行执行
 
 ### 报表类型
 
-| 报表 | 频率 | 内容 | 接收人 |
-|------|------|------|--------|
-| **周报** | 每周一 | 本周新建/关闭/活跃 Issue、SLA 达标率、趋势 | 管理员 + 技术主管 |
-| **月报** | 每月 1 号 | 月度汇总、对比上月、团队贡献排行、重点关注 | 全部成员 |
-| **SLA 日报** | 每日 | 超时未处理 Issue 清单 | 管理员 |
-
-### 周报示例结构
-
-```
-## huaweicloud-mate Issues 周报（2026-W31）
-
-### 概览
-| 指标 | 本周 | 上周 | 变化 |
+| 报表 | 频率 | 内容 | 发送 |
 |------|------|------|------|
-| 新建 Issue | 12 | 8 | +50% |
-| 已关闭 | 9 | 11 | -18% |
-| 活跃 | 23 | 20 | +15% |
+| **周报** | 每周一 09:00 UTC | GitHub+GitCode 合并统计、SLA 达标率、类型分布 | 飞书+邮件 |
+| **月报** | 每月 1 号 | 月度汇总、仓库排行、GitCode 统计 | 飞书+邮件 |
+| **SLA 日报** | 工作日 08:00 UTC | GitHub+GitCode 超时 Issue 清单 | 飞书+邮件 |
 
-### SLA 达标率
-- 总达标率：87%（目标 90%）
-- critical：100%
-- high：85% ⚠️
-- medium：82% ⚠️
+### 统计维度
 
-### GitCode 统计（hd-vector）
-| 仓库 | 开启 | 关闭 | 合计 |
-|------|------|------|------|
-| xxx-sdk | 5 | 12 | 17 |
-| yyy-api | 2 | 8 | 10 |
-...
-
-### 重点关注
-- #42 (critical) 已超时 3 天未分配
-- #56 (high) 30 天无更新
-```
+| 维度 | GitHub | GitCode |
+|------|:------:|:-------:|
+| Issue 总数/开启/关闭 | ✅ | ✅ |
+| 按类型/优先级分布 | ✅ | ✅ |
+| SLA 达标率 | ✅ | ✅ |
+| 仓库排行 | ✅ | ✅ |
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `workflows/weekly-report.yml` | `.github` | 周报触发器 |
-| `workflows/monthly-report.yml` | `.github` | 月报触发器 |
-| `workflows/sla-daily.yml` | `.github` | SLA 日报触发器 |
-| `scripts/stats_report.py` | `.github` | 报表生成脚本（复用） |
-| `templates/report-weekly.md` | `.github` | 周报模板 |
-| `templates/report-monthly.md` | `.github` | 月报模板 |
+| 文件 | 作用 |
+|------|------|
+| `workflows/issue-stats.yml` | 统计+报表触发器 |
+| `workflows/weekly-report.yml` | 周报触发器 |
+| `workflows/monthly-report.yml` | 月报触发器 |
+| `workflows/sla-daily.yml` | SLA 日报触发器 |
+| `scripts/github_stats.py` | GitHub Issue 统计 |
+| `scripts/gitcode_stats.py` | GitCode Issue 统计抓取 |
+| `scripts/stats_report.py` | 合并生成报表 + 双通道发送 |
+| `templates/report-weekly.md` | 周报模板 |
+| `templates/report-monthly.md` | 月报模板 |
 
 ---
 
-## 六、SLA 提醒
+## 六、SLA 标准
 
-### SLA 标准
+### GitHub
 
-| 优先级 | 首次响应时限 | 解决时限（工作日） | 升级时限 |
-|--------|------------|------------------|---------|
+| 优先级 | 首次响应时限 | 解决时限 | 升级时限 |
+|--------|------------|---------|---------|
 | `priority/critical` | 4 小时 | 1 天 | 8 小时 |
 | `priority/high` | 8 小时 | 3 天 | 24 小时 |
 | `priority/medium` | 24 小时 | 7 天 | 3 天 |
 | `priority/low` | 48 小时 | 30 天 | 14 天 |
 
-### SLA 监控流程
+### GitCode（相同标准）
 
-```
-Issue 创建 → 记录 created_at
-    ↓
-SLA Monitor workflow（每小时运行一次）
-    ↓
-扫描所有未关闭 Issue
-    ├── 首次响应超时（无回复/无分配）→ 打 label:sla/breach + 飞书通知管理员
-    ├── 解决超时（超过解决时限）→ 打 label:sla/breach + label:escalation + 飞书通知
-    └── 即将超时（剩余 < 24h）→ 打 label:sla/warning + 飞书通知
-```
-
-### SLA 告警飞书卡片
-
-```
-标题: [SLA] Issue #42 首次响应超时
-
-Issue: huaweicloud-mate/xxx-repo#42
-标题: API 接口 500 错误
-优先级: critical
-创建时间: 2026-08-01 09:00
-应响应时间: 2026-08-01 13:00
-当前状态: 超时 2h 未响应
-
-操作: https://github.com/huaweicloud-mate/xxx-repo/issues/42
-```
-
-### SLA 达标率计算
-
-```
-达标率 = (时限内完成数 / 总应完成数) × 100%
-
-分级统计:
-- 按优先级
-- 按仓库
-- 按负责人
-```
+| 优先级 | 首次响应时限 | 解决时限 | 升级时限 |
+|--------|------------|---------|---------|
+| critical | 4 小时 | 1 天 | 8 小时 |
+| high | 8 小时 | 3 天 | 24 小时 |
+| medium | 24 小时 | 7 天 | 3 天 |
+| low | 48 小时 | 30 天 | 14 天 |
 
 ### 关键文件
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `workflows/sla-monitor.yml` | `.github` | SLA 监控触发器（每小时） |
-| `scripts/sla_monitor.py` | `.github` | SLA 检测 + 告警脚本 |
-| `configs/sla-rules.yml` | `.github` | SLA 时限配置 |
+| 文件 | 作用 |
+|------|------|
+| `workflows/sla-monitor.yml` | GitHub SLA 监控（每小时） |
+| `workflows/gitcode-sla.yml` | GitCode SLA 监控（每小时） |
+| `scripts/sla_monitor.py` | GitHub SLA 检测+告警 |
+| `scripts/gitcode_sla.py` | GitCode SLA 检测+告警 |
+| `configs/sla-rules.yml` | SLA 时限配置 |
 
 ---
 
-## 七、完整文件清单
+## 七、全部 Workflow 触发总览
 
-| 文件 | 仓库 | 作用 |
-|------|------|------|
-| `actions/issue-bot/issue_bot.py` | `.github` | Issue Bot（分类+分配） |
-| `workflows/triage-issue.yml` | `.github` | Triage 触发 |
-| `workflows/stale.yml` | `.github` | Stale 检测 |
-| `workflows/status-transition.yml` | `.github` | 状态流转 |
-| `workflows/sla-monitor.yml` | `.github` | SLA 监控（每小时） |
-| `workflows/issue-notify.yml` | `.github` | Issue 事件飞书通知 |
-| `workflows/feishu-notify.yml` | `.github` | 可复用飞书通知 |
-| `workflows/issue-stats.yml` | `.github` | 统计报表触发 |
-| `workflows/weekly-report.yml` | `.github` | 周报触发 |
-| `workflows/monthly-report.yml` | `.github` | 月报触发 |
-| `workflows/sla-daily.yml` | `.github` | SLA 日报触发 |
-| `scripts/feishu_notify.py` | `.github` | 飞书通知发送 |
-| `scripts/sla_monitor.py` | `.github` | SLA 检测+告警 |
-| `scripts/github_stats.py` | `.github` | GitHub 统计 |
-| `scripts/gitcode_stats.py` | `.github` | GitCode 统计抓取 |
-| `scripts/stats_report.py` | `.github` | 合并报表生成 |
-| `configs/triage-rules.yml` | `.github` | 分类规则配置 |
-| `configs/stale-rules.yml` | `.github` | 过期规则配置 |
-| `configs/sla-rules.yml` | `.github` | SLA 时限配置 |
-| `configs/feishu-rules.yml` | `.github` | 飞书通知规则 |
-| `templates/report-weekly.md` | `.github` | 周报模板 |
-| `templates/report-monthly.md` | `.github` | 月报模板 |
+| Workflow | 触发方式 | 频率 |
+|----------|---------|------|
+| `triage-issue.yml` | Issue opened | 实时 |
+| `issue-notify.yml` | Issue opened/closed/labeled | 实时 |
+| `feishu-notify.yml` | workflow_call / workflow_dispatch | 按需 |
+| `sla-monitor.yml` | schedule | 每小时 |
+| `stale.yml` | schedule | 每天 02:00 UTC |
+| `status-transition.yml` | PR opened/closed + issue closed | 实时 |
+| `issue-stats.yml` | schedule / workflow_dispatch | 每周一 09:00 UTC |
+| `weekly-report.yml` | schedule | 每周一 09:00 UTC |
+| `monthly-report.yml` | schedule | 每月 1 号 |
+| `sla-daily.yml` | schedule | 工作日 08:00 UTC |
+| `gitcode-triage.yml` | schedule | 每 6 小时 |
+| `gitcode-sla.yml` | schedule | 每小时 |
+| `gitcode-stale.yml` | schedule | 每天 03:00 UTC |
 
 ---
 
 ## 八、组织 Secrets
 
-| Secret | 用途 | 来源 |
+| Secret | 用途 | 级别 |
 |--------|------|------|
-| `FEISHU_APP_ID` | 飞书应用 ID（通知用） | 已有（建仓流程已配置） |
-| `FEISHU_APP_SECRET` | 飞书应用密钥 | 已有（建仓流程已配置） |
-| `FEISHU_ADMIN_OPEN_ID` | 飞书管理员 open_id | 已有（建仓流程已配置） |
-| `GITCODE_TOKEN` | GitCode API 访问（统计抓取用） | 已有（建仓流程已配置） |
-| `GITHUB_TOKEN` | GitHub API 访问 | 默认提供 |
-
-> 通知使用飞书，无需额外配置 SendGrid 等邮件服务，复用建仓流程已有的飞书 Secret 即可。
+| `FEISHU_APP_ID` | 飞书应用 ID | 组织级 + .github |
+| `FEISHU_APP_SECRET` | 飞书应用密钥 | 组织级 + .github |
+| `FEISHU_ADMIN_OPEN_ID` | 管理员 open_id（ou_f3dxxx） | 组织级 + .github |
+| `SMTP_HOST` | QQ 邮箱 SMTP 服务器（smtp.qq.com） | 组织级 + .github |
+| `SMTP_PORT` | SMTP 端口（587） | 组织级 + .github |
+| `SMTP_USER` | SMTP 账号（114271379@qq.com） | 组织级 + .github |
+| `SMTP_PASS` | SMTP 授权码（QQ 邮箱） | 组织级 + .github |
+| `EMAIL_REPORT_TO` | 报表接收邮箱（114271379@qq.com） | 组织级 + .github |
+| `GITCODE_TOKEN` | GitCode API Token | 组织级 + .github |
+| `GITHUB_TOKEN` | GitHub API | 默认提供 |
 
 ---
 
 ## 九、管理员操作速查
 
 ```powershell
-# 查看超时 Issue（所有仓库）
+# === GitHub ===
+# 查看超时 Issue
 gh issue list -R huaweicloud-mate/<repo> -l "sla/breach"
 
 # 查看待处理 Issue
@@ -382,38 +311,56 @@ gh workflow run issue-stats.yml -R huaweicloud-mate/.github
 # 手动触发 SLA 检查
 gh workflow run sla-monitor.yml -R huaweicloud-mate/.github
 
-# 查看某仓库 Issue 统计
-gh issue list -R huaweicloud-mate/<repo> --limit 1000 --json state,labels | `
-  ConvertFrom-Json | Group-Object state | Select-Object Name,Count
+# 手动测试飞书通知
+gh workflow run feishu-notify.yml -R huaweicloud-mate/.github -f event=test -f subject="测试" -f body="内容"
+
+# === GitCode ===
+# 手动触发 GitCode Triage
+gh workflow run gitcode-triage.yml -R huaweicloud-mate/.github
+
+# 手动触发 GitCode SLA
+gh workflow run gitcode-sla.yml -R huaweicloud-mate/.github
+
+# 手动触发 GitCode Stale
+gh workflow run gitcode-stale.yml -R huaweicloud-mate/.github
 ```
 
 ---
 
-## 十、标签体系（标准 14 标签 + 扩展）
+## 十、标签体系
 
-### 标准标签（建仓时自动创建）
+### GitHub 标准标签
 
-| 标签 | 用途 |
-|------|------|
-| `type/bug` | Bug 报告 |
-| `type/feature` | 功能请求 |
-| `type/documentation` | 文档相关 |
-| `type/question` | 问题咨询 |
-| `priority/critical` | 紧急 |
-| `priority/high` | 高 |
-| `priority/medium` | 中 |
-| `priority/low` | 低 |
-| `status/pending` | 待处理 |
-| `status/triaged` | 已分类 |
-| `status/in-progress` | 进行中 |
-| `status/resolved` | 已解决 |
-| `status/completed` | 已完成 |
-| `status/stale` | 即将过期 |
+| 标签 | 用途 | GitCode 对应 |
+|------|------|:-----------:|
+| `type/bug` | Bug 报告 | ✅ |
+| `type/feature` | 功能请求 | ✅ |
+| `type/documentation` | 文档相关 | ✅ |
+| `type/question` | 问题咨询 | ✅ |
+| `priority/critical` | 紧急 | ✅ |
+| `priority/high` | 高 | ✅ |
+| `priority/medium` | 中 | ✅ |
+| `priority/low` | 低 | ✅ |
+| `status/pending` | 待处理 | - |
+| `status/triaged` | 已分类 | - |
+| `status/in-progress` | 进行中 | - |
+| `status/resolved` | 已解决 | - |
+| `status/completed` | 已完成 | - |
+| `status/stale` | 即将过期 | ✅ |
 
-### Issue 自动化专用标签
+### 自动化专用标签
 
 | 标签 | 用途 |
 |------|------|
 | `sla/breach` | SLA 已违约 |
 | `sla/warning` | SLA 即将违约 |
 | `escalation` | 已升级 |
+
+---
+
+## 十一、待改进项
+
+- [ ] 按维护者邮箱分发通知（当前统一发管理员）
+- [ ] GitCode `GITCODE_TOKEN` 权限确认（当前 401）
+- [ ] Issue 趋势图表（环比变化）
+- [ ] 飞书 bot 交互命令（/assign, /priority 等扩展）
