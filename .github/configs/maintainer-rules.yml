@@ -1,0 +1,32 @@
+﻿# 维护者邮箱映射 & 通知配置
+
+# 通知通道（可扩展：email / feishu / dingtalk / slack）
+channels:
+  - email
+
+# 角色 → GitHub用户名 → 真实邮箱
+maintainers:
+  api-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  web-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  devops-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  sdk-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  security-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  performance-maintainer:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  tech-lead:
+    github: shuangheaven
+    email: "114271379@qq.com"
+  default-triage:
+    github: shuangheaven
+    email: "114271379@qq.com"
