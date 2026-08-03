@@ -13,17 +13,12 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Set up Python
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: "3.12"
-
-    - name: Install dependencies
-      shell: bash
+    - shell: bash
       run: pip install cryptography
-
-    - name: Run Issue Bot
-      shell: bash
+    - shell: bash
       env:
         APP_ID: ${{ inputs.app-id }}
         APP_PRIVATE_KEY: ${{ inputs.app-private-key }}
@@ -33,34 +28,3 @@ runs:
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: python3 ${{ github.action_path }}/issue_bot.py
-
-    - name: Auto Assign
-      if: always()
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-      run: |
-        ISSUE_NUMBER=$(python3 -c "import json,os; print(json.load(open(os.environ['GITHUB_EVENT_PATH']))['issue']['number'])")
-        LABELS=$(python3 -c "import json,os; print(','.join(l['name'] for l in json.load(open(os.environ['GITHUB_EVENT_PATH']))['issue'].get('labels',[])))")
-
-        ASSIGNEE="default-triage"
-        case "$LABELS" in
-          *area/api*) ASSIGNEE="api-maintainer" ;;
-          *area/frontend*) ASSIGNEE="web-maintainer" ;;
-          *area/ci-cd*) ASSIGNEE="devops-maintainer" ;;
-          *area/sdk*) ASSIGNEE="sdk-maintainer" ;;
-          *area/security*) ASSIGNEE="security-maintainer" ;;
-          *area/performance*) ASSIGNEE="performance-maintainer" ;;
-        esac
-
-        if echo "$LABELS" | grep -q "type/bug" && echo "$LABELS" | grep -q "priority/critical"; then
-          ASSIGNEE="tech-lead"
-        fi
-
-        echo "Auto-assign: $ASSIGNEE"
-        curl -s -X POST \
-          -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -H "Accept: application/vnd.github+json" \
-          "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/assignees" \
-          -d "{\"assignees\":[\"$ASSIGNEE\"]}" || echo "Assign skipped (user may not exist in org)"
