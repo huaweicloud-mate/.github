@@ -177,40 +177,53 @@ def generate_daily_report(sla_results):
     """生成 SLA 日报"""
     breach_items = [r for r in sla_results if r["status"] in ("breach", "escalation")]
     warning_items = [r for r in sla_results if r["status"] == "warning"]
+    ok_count = sum(1 for r in sla_results if r["status"] == "ok")
 
     lines = []
-    lines.append("## SLA 日报")
-    lines.append(f"生成时间: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append(f"# huaweicloud-mate SLA 日报")
+    lines.append(f"**{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC** | 共 {len(sla_results)} 个活跃 Issue")
+    lines.append("")
+
+    lines.append(f"- 正常：{ok_count} | 预警：{len(warning_items)} | 违约/升级：{len(breach_items)}")
+    if len(sla_results) > 0:
+        ok_rate = ok_count / len(sla_results) * 100
+        flag = " " if ok_rate >= 90 else " "
+        lines.append(f"- SLA 达标率：{ok_rate:.1f}% {flag}（目标 90%）")
     lines.append("")
 
     if breach_items:
-        lines.append(f"### SLA 违约/升级 ({len(breach_items)} 个)")
+        lines.append(f"## SLA 违约/升级（{len(breach_items)} 个）")
         lines.append("")
-        lines.append("| 仓库 | Issue | 优先级 | 超时(h) | 状态 |")
-        lines.append("|------|-------|--------|---------|------|")
+        lines.append("| 仓库 | Issue | 优先级 | 超时(h) | 状态 | 详情 |")
+        lines.append("|------|-------|--------|---------|------|------|")
         for item in breach_items:
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
+            alerts = "; ".join(item.get("alerts", []))
             lines.append(
                 f"| {item['repo']} | [#{item['number']}]({url}) "
-                f"| {item['priority']} | {item['elapsed_hours']:.1f} | {item['status']} |"
+                f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {item['status']} | {alerts} |"
             )
         lines.append("")
 
     if warning_items:
-        lines.append(f"### SLA 预警 ({len(warning_items)} 个)")
+        lines.append(f"## SLA 预警（{len(warning_items)} 个）")
         lines.append("")
-        lines.append("| 仓库 | Issue | 优先级 | 超时(h) |")
-        lines.append("|------|-------|--------|---------|")
+        lines.append("| 仓库 | Issue | 优先级 | 超时(h) | 详情 |")
+        lines.append("|------|-------|--------|---------|------|")
         for item in warning_items:
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
+            alerts = "; ".join(item.get("alerts", []))
             lines.append(
                 f"| {item['repo']} | [#{item['number']}]({url}) "
-                f"| {item['priority']} | {item['elapsed_hours']:.1f} |"
+                f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {alerts} |"
             )
         lines.append("")
 
     if not breach_items and not warning_items:
-        lines.append("所有 Issue 均未超时。")
+        lines.append("## 状态")
+        lines.append("")
+        lines.append("  **所有 Issue 均在 SLA 时限内，无超时。**")
+        lines.append("")
 
     return "\n".join(lines)
 

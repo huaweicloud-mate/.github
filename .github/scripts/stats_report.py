@@ -17,138 +17,203 @@ def load_data(env_var):
         return {}
 
 
+def pct(part, total):
+    if total == 0:
+        return "-"
+    return f"{part / total * 100:.1f}%"
+
+
+def _level_bar(value, warn, danger):
+    if value >= danger:
+        return ""
+    elif value >= warn:
+        return ""
+    return ""
+
+
 def generate_weekly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
     week_num = now.isocalendar()[1]
     year = now.year
 
-    lines = []
-    lines.append(f"## huaweicloud-mate Issues 周报（{year}-W{week_num:02d}）")
-    lines.append("")
-    lines.append("### 概览")
-    lines.append("")
-
-    gh_totals = github_data.get("totals", {})
-    lines.append("| 指标 | 本周 |")
-    lines.append("|------|------|")
-    lines.append(f"| 新建 Issue | {gh_totals.get('new_this_week', 0)} |")
-    lines.append(f"| 已关闭 | {gh_totals.get('closed_this_week', 0)} |")
-    lines.append(f"| 活跃 (已开启) | {gh_totals.get('open_issues', 0)} |")
-    lines.append(f"| 总 Issue 数 | {gh_totals.get('total_issues', 0)} |")
-    lines.append("")
-
-    # 按类型分布
+    gh = github_data.get("totals", {})
+    repos = github_data.get("repos", [])
     type_totals = github_data.get("type_totals", {})
-    lines.append("### Issue 类型分布")
-    lines.append("")
-    lines.append("| 类型 | 数量 |")
-    lines.append("|------|------|")
-    for t, count in sorted(type_totals.items(), key=lambda x: -x[1]):
-        lines.append(f"| {t} | {count} |")
-    lines.append("")
-
-    # SLA 状态
     sla_totals = github_data.get("sla_totals", {"ok": 0, "warning": 0, "breach": 0})
     total_sla = sum(sla_totals.values())
-    lines.append("### SLA 达标率")
-    lines.append("")
-    if total_sla > 0:
-        ok_rate = sla_totals["ok"] / total_sla * 100
-        lines.append(f"- 总达标率：{ok_rate:.1f}%（目标 90%）")
-    lines.append(f"- 正常：{sla_totals.get('ok', 0)}")
-    lines.append(f"- 预警：{sla_totals.get('warning', 0)}")
-    lines.append(f"- 违约：{sla_totals.get('breach', 0)}")
+    gc = gitcode_data.get("summary", {})
+    gc_projects = gitcode_data.get("projects", [])
+
+    new_w = gh.get("new_this_week", 0)
+    closed_w = gh.get("closed_this_week", 0)
+    open_all = gh.get("open_issues", 0)
+    total_all = gh.get("total_issues", 0)
+    new_m = gh.get("new_this_month", 0)
+
+    lines = []
+    lines.append(f"# huaweicloud-mate Issues 周报")
+    lines.append(f"**{year}-W{week_num:02d}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append("")
 
-    # GitCode 统计
-    gitcode_projects = gitcode_data.get("projects", [])
-    if gitcode_projects:
-        lines.append("### GitCode 统计（hd-vector）")
+    # 概览
+    lines.append("## 概览")
+    lines.append("")
+    lines.append("| 指标 | 本周数值 | 总活跃/累计 |")
+    lines.append("|------|---------|------------|")
+    lines.append(f"| 本周新建 | {new_w} | / |")
+    lines.append(f"| 本周关闭 | {closed_w} | / |")
+    lines.append(f"| 活跃 Issue | {open_all} | / |")
+    lines.append(f"| 历史累计 | / | {total_all} |")
+    lines.append(f"| 本月新建 | / | {new_m} |")
+    rate = pct(closed_w, max(closed_w + new_w, 1))
+    lines.append(f"| 本周关闭率 | {rate} | / |")
+    lines.append("")
+
+    # SLA
+    lines.append("## SLA 概览")
+    lines.append("")
+    lines.append(f"- 总活跃 Issue：{open_all} 个")
+    oc = sla_totals.get("ok", 0)
+    wn = sla_totals.get("warning", 0)
+    br = sla_totals.get("breach", 0)
+    if total_sla > 0:
+        ok_rate = oc / total_sla * 100
+        flag = " " if ok_rate >= 90 else " "
+        flag_b = "  " if br > 0 else ""
+        lines.append(f"- 达标率：{ok_rate:.1f}% {flag}（目标 90%）")
+    lines.append(f"- 正常：{oc} | 预警：{wn} | 违约：{br} {flag_b}")
+    lines.append("")
+
+    # 类型分布
+    lines.append("## Issue 类型分布")
+    lines.append("")
+    lines.append("| 类型 | 总数 | 占比 |")
+    lines.append("|------|------|------|")
+    total_typed = sum(v for k, v in type_totals.items() if k != "other")
+    for t in ["type/bug", "type/feature", "type/documentation", "type/question"]:
+        c = type_totals.get(t, 0)
+        lines.append(f"| {t} | {c} | {pct(c, max(total_typed, 1))} |")
+    lines.append(f"| other | {type_totals.get('other', 0)} | - |")
+    lines.append("")
+
+    # 仓库明细
+    if repos:
+        lines.append("## 仓库明细")
+        lines.append("")
+        lines.append("| 仓库 | 活跃 | 本周新增 | 本周关闭 | 累计 |")
+        lines.append("|------|------|---------|---------|------|")
+        for r in sorted(repos, key=lambda x: x.get("open", 0), reverse=True):
+            lines.append(
+                f"| {r.get('repo', '')} | {r.get('open', 0)} | "
+                f"{r.get('new_this_week', 0)} | {r.get('closed_this_week', 0)} | "
+                f"{r.get('total', 0)} |"
+            )
+        lines.append("")
+
+    # GitCode
+    if gc_projects:
+        lines.append("## GitCode 统计（hd-vector）")
         lines.append("")
         lines.append("| 仓库 | 开启 | 关闭 | 合计 |")
         lines.append("|------|------|------|------|")
-        for proj in gitcode_projects:
+        for proj in gc_projects:
             lines.append(
                 f"| {proj.get('name', '')} | "
                 f"{proj.get('open', 0)} | {proj.get('closed', 0)} | {proj.get('total', 0)} |"
             )
         lines.append("")
 
-    # 按仓库明细
-    repos = github_data.get("repos", [])
-    if repos:
-        lines.append("### 仓库明细")
-        lines.append("")
-        lines.append("| 仓库 | 开启 | 新增(周) | 关闭(周) |")
-        lines.append("|------|------|---------|---------|")
-        for r in repos:
-            lines.append(
-                f"| {r.get('repo', '')} | {r.get('open', 0)} | "
-                f"{r.get('new_this_week', 0)} | {r.get('closed_this_week', 0)} |"
-            )
-        lines.append("")
+    # 小结
+    lines.append("---")
+    if br > 0:
+        lines.append(f"  **注意**：有 {br} 个 Issue SLA 违约，请及时处理。")
+    if new_w == 0:
+        lines.append("  **提示**：本周无新建 Issue。")
+    lines.append("")
 
     return "\n".join(lines)
 
 
 def generate_monthly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
-    # 月报显示上个月
     if now.month == 1:
         report_month = f"{now.year - 1}-12"
     else:
         report_month = f"{now.year}-{now.month - 1:02d}"
 
-    lines = []
-    lines.append(f"## huaweicloud-mate Issues 月报（{report_month}）")
-    lines.append("")
-
-    gh_totals = github_data.get("totals", {})
-    lines.append("### 概览")
-    lines.append("")
-    lines.append("| 指标 | 本月 |")
-    lines.append("|------|------|")
-    lines.append(f"| 新建 Issue | {gh_totals.get('new_this_month', 0)} |")
-    lines.append(f"| 已关闭 | {gh_totals.get('closed_issues', 0)} |")
-    lines.append(f"| 活跃 (已开启) | {gh_totals.get('open_issues', 0)} |")
-    lines.append(f"| 总 Issue 数 | {gh_totals.get('total_issues', 0)} |")
-    lines.append("")
-
-    # 按类型
+    gh = github_data.get("totals", {})
+    repos = github_data.get("repos", [])
     type_totals = github_data.get("type_totals", {})
-    lines.append("### 按类型分布")
+    gc = gitcode_data.get("summary", {})
+    gc_projects = gitcode_data.get("projects", [])
+
+    new_m = gh.get("new_this_month", 0)
+    closed_all = gh.get("closed_issues", 0)
+    open_all = gh.get("open_issues", 0)
+    total_all = gh.get("total_issues", 0)
+
+    lines = []
+    lines.append(f"# huaweicloud-mate Issues 月报")
+    lines.append(f"**{report_month}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append("")
-    lines.append("| 类型 | 数量 |")
-    lines.append("|------|------|")
-    for t, count in sorted(type_totals.items(), key=lambda x: -x[1]):
-        lines.append(f"| {t} | {count} |")
+
+    # 概览
+    lines.append("## 概览")
     lines.append("")
+    lines.append("| 指标 | 本月数值 | 全量 |")
+    lines.append("|------|---------|------|")
+    lines.append(f"| 月度新建 | {new_m} | / |")
+    lines.append(f"| 月度关闭 | / | {closed_all} |")
+    lines.append(f"| 当前活跃 | {open_all} | / |")
+    lines.append(f"| 历史累计 | / | {total_all} |")
+    if total_all > 0:
+        cr = pct(total_all - open_all, total_all)
+        lines.append(f"| 累计关闭率 | / | {cr} |")
+    lines.append("")
+
+    # 类型分布
+    lines.append("## Issue 类型分布")
+    lines.append("")
+    lines.append("| 类型 | 数量 | 占比 |")
+    lines.append("|------|------|------|")
+    total_typed = sum(v for k, v in type_totals.items() if k != "other")
+    for t in ["type/bug", "type/feature", "type/documentation", "type/question"]:
+        c = type_totals.get(t, 0)
+        lines.append(f"| {t} | {c} | {pct(c, max(total_typed, 1))} |")
+    lines.append(f"| other | {type_totals.get('other', 0)} | - |")
+    lines.append("")
+
+    # 仓库排行
+    if repos:
+        lines.append("## 仓库 Issue 排行")
+        lines.append("")
+        lines.append("| 排名 | 仓库 | 活跃 | 本月新建 | 累计 |")
+        lines.append("|------|------|------|---------|------|")
+        sorted_repos = sorted(repos, key=lambda x: x.get("total", 0), reverse=True)[:10]
+        for i, r in enumerate(sorted_repos, 1):
+            lines.append(
+                f"| {i} | {r.get('repo', '')} | {r.get('open', 0)} | "
+                f"{r.get('new_this_month', 0)} | {r.get('total', 0)} |"
+            )
+        lines.append("")
 
     # GitCode
-    gitcode_projects = gitcode_data.get("projects", [])
-    if gitcode_projects:
-        lines.append("### GitCode 统计（hd-vector）")
+    if gc_projects:
+        lines.append("## GitCode 统计（hd-vector）")
         lines.append("")
         lines.append("| 仓库 | 开启 | 关闭 | 合计 |")
         lines.append("|------|------|------|------|")
-        for proj in gitcode_projects:
+        for proj in gc_projects:
             lines.append(
                 f"| {proj.get('name', '')} | "
                 f"{proj.get('open', 0)} | {proj.get('closed', 0)} | {proj.get('total', 0)} |"
             )
         lines.append("")
 
-    # 仓库贡献排行
-    repos = github_data.get("repos", [])
-    if repos:
-        lines.append("### 仓库 Issue 排行（按总量）")
-        lines.append("")
-        lines.append("| 排名 | 仓库 | 总数 | 开启 |")
-        lines.append("|------|------|------|------|")
-        sorted_repos = sorted(repos, key=lambda x: x.get("total", 0), reverse=True)[:10]
-        for i, r in enumerate(sorted_repos, 1):
-            lines.append(f"| {i} | {r.get('repo', '')} | {r.get('total', 0)} | {r.get('open', 0)} |")
-        lines.append("")
+    lines.append("---")
+    if new_m == 0:
+        lines.append("  **提示**：本月无新建 Issue。")
+    lines.append("")
 
     return "\n".join(lines)
 
@@ -164,7 +229,6 @@ def main():
     github_data = load_data("GITHUB_DATA")
     gitcode_data = load_data("GITCODE_DATA")
 
-    # 如果数据为空，尝试从文件读取
     if not github_data:
         for path in ["output/github_stats.json", "github_stats.json"]:
             try:
@@ -187,7 +251,6 @@ def main():
         if not gitcode_data:
             gitcode_data = {"projects": [], "summary": {}}
 
-    # 生成报告
     if report_type == "monthly":
         now = datetime.now(timezone.utc)
         if now.month == 1:
@@ -204,18 +267,15 @@ def main():
 
     print(report)
 
-    # 保存报告文件（供归档使用）
     os.makedirs("output", exist_ok=True)
     report_path = os.environ.get("REPORT_FILE", "output/report.md")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report)
     print(f"Report saved to {report_path}")
 
-    # 发送飞书通知
     event_type = "report.monthly" if report_type == "monthly" else "report.weekly"
     send_notification(subject=subject, body=report, event_type=event_type)
 
-    # 发送邮件报告
     send_email(subject=subject, body=report)
 
 
