@@ -23,7 +23,21 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml requests
 
-      - name: Collect and Generate Weekly Report
+      - name: Collect GitHub Stats
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: "huaweicloud-mate"
+        run: |
+          mkdir -p output
+          python .github/scripts/github_stats.py > output/github_stats.json
+
+      - name: Collect GitCode Stats
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_ORG: "hd-vector"
+        run: python .github/scripts/gitcode_stats.py > output/gitcode_stats.json
+
+      - name: Generate and Send Weekly Report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"

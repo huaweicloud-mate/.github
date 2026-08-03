@@ -93,9 +93,14 @@ def generate_weekly_report(github_data, gitcode_data):
 
 def generate_monthly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
+    # 月报显示上个月
+    if now.month == 1:
+        report_month = f"{now.year - 1}-12"
+    else:
+        report_month = f"{now.year}-{now.month - 1:02d}"
 
     lines = []
-    lines.append(f"## huaweicloud-mate Issues 月报（{now.strftime('%Y-%m')}）")
+    lines.append(f"## huaweicloud-mate Issues 月报（{report_month}）")
     lines.append("")
 
     gh_totals = github_data.get("totals", {})
@@ -184,7 +189,7 @@ def main():
 
     # 生成报告
     if report_type == "monthly":
-        subject = f"[Issue 月报] huaweicloud-mate {datetime.now(timezone.utc).strftime('%Y-%m')}"
+        subject = f"[Issue 月报] huaweicloud-mate {report_month}"
         report = generate_monthly_report(github_data, gitcode_data)
     else:
         week_num = datetime.now(timezone.utc).isocalendar()[1]

@@ -17,7 +17,20 @@ HEADERS = {
 
 NOW = datetime.now(timezone.utc)
 WEEK_AGO = NOW - timedelta(days=7)
-MONTH_AGO = NOW - timedelta(days=30)
+
+# 本月范围：从本月 1 号开始
+this_month_start = NOW.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+# 上月范围：从上月 1 号到本月 1 号
+if this_month_start.month == 1:
+    last_month_start = this_month_start.replace(year=this_month_start.year - 1, month=12)
+else:
+    last_month_start = this_month_start.replace(month=this_month_start.month - 1)
+
+def get_month_start(report_type):
+    if report_type == "monthly":
+        return last_month_start
+    return this_month_start
 
 
 def get_all_repos():
@@ -57,7 +70,8 @@ def get_repo_issues(repo_full, state="all", since=None):
     return issues
 
 
-def calc_stats(repo, issues):
+def calc_stats(repo, issues, report_type="weekly"):
+    month_start = get_month_start(report_type)
     open_issues = [i for i in issues if i["state"] == "open"]
     closed_issues = [i for i in issues if i["state"] == "closed"]
 
@@ -73,10 +87,10 @@ def calc_stats(repo, issues):
         if i.get("closed_at") and datetime.fromisoformat(i["closed_at"].replace("Z", "+00:00")) >= WEEK_AGO
     ]
 
-    # 本月新建
+    # 月度新建
     new_this_month = [
         i for i in issues
-        if datetime.fromisoformat(i["created_at"].replace("Z", "+00:00")) >= MONTH_AGO
+        if datetime.fromisoformat(i["created_at"].replace("Z", "+00:00")) >= month_start
     ]
 
     # 标签分布
@@ -144,6 +158,13 @@ def calc_stats(repo, issues):
 
 
 def main():
+    import sys
+    report_type = "weekly"
+    for arg in sys.argv:
+        if arg == "--monthly":
+            report_type = "monthly"
+    report_type = os.environ.get("REPORT_TYPE", report_type)
+
     repos = get_all_repos()
     all_stats = []
 
@@ -151,7 +172,7 @@ def main():
         issues = get_repo_issues(repo["full_name"])
         if not issues:
             continue
-        stats = calc_stats(repo, issues)
+        stats = calc_stats(repo, issues, report_type)
         all_stats.append(stats)
 
     # 汇总
