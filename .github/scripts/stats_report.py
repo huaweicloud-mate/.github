@@ -70,8 +70,9 @@ def generate_weekly_report(github_data, gitcode_data):
     lines.append(f"| 活跃 Issue | {open_all} | / |")
     lines.append(f"| 历史累计 | / | {total_all} |")
     lines.append(f"| 本月新建 | / | {new_m} |")
-    rate = pct(closed_w, max(closed_w + new_w, 1))
-    lines.append(f"| 本周关闭率 | {rate} | / |")
+    net = new_w - closed_w
+    net_str = f"+{net}" if net > 0 else str(net)
+    lines.append(f"| 本周净变化 | {net_str} | / |")
     lines.append("")
 
     # SLA
