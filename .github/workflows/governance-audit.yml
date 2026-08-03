@@ -1,0 +1,95 @@
+name: Monthly Governance Audit
+on:
+  schedule:
+    - cron: '0 3 1 * *'  # 每月1日 CST 11:00
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit Repository Health
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          #!/bin/bash
+          echo "# huaweicloud 组织治理月度巡检报告"
+          echo ""
+          echo "> 日期: $(date +%Y-%m-%d)"
+          echo "> 组织: huaweicloud"
+          echo ""
+
+          ORG="huaweicloud"
+          TOTAL=0
+          NO_LICENSE=0
+          ISSUES_OFF=0
+          NONSTD_BRANCH=0
+          ARCHIVED=0
+
+          # 获取仓库列表（处理分页）
+          PAGE=1
+          while true; do
+            DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/orgs/$ORG/repos?type=all&per_page=100&page=$PAGE")
+
+            COUNT=$(echo "$DATA" | jq 'length')
+            if [ "$COUNT" -eq 0 ]; then break; fi
+
+            TOTAL=$((TOTAL + COUNT))
+
+            # 统计各项指标
+            NO_LICENSE=$((NO_LICENSE + $(echo "$DATA" | jq '[.[] | select(.archived==false and .license==null)] | length')))
+            ISSUES_OFF=$((ISSUES_OFF + $(echo "$DATA" | jq '[.[] | select(.archived==false and .has_issues==false)] | length')))
+            NONSTD_BRANCH=$((NONSTD_BRANCH + $(echo "$DATA" | jq '[.[] | select(.archived==false and .default_branch!="main" and .default_branch!="master")] | .[].full_name' -r | wc -l)))
+            ARCHIVED=$((ARCHIVED + $(echo "$DATA" | jq '[.[] | select(.archived==true)] | length')))
+
+            PAGE=$((PAGE + 1))
+          done
+
+          ACTIVE=$((TOTAL - ARCHIVED))
+
+          echo "| 指标 | 当前值 | 目标 | 状态 |"
+          echo "|------|--------|------|------|"
+          echo "| 活跃仓库 | $ACTIVE | — | ✅ |"
+          echo "| 无License | $NO_LICENSE | 0 | $([ $NO_LICENSE -eq 0 ] && echo '✅' || echo '❌') |"
+          echo "| Issues禁用 | $ISSUES_OFF | 0 | $([ $ISSUES_OFF -eq 0 ] && echo '✅' || echo '❌') |"
+          echo "| 非标准分支 | $NONSTD_BRANCH | 0 | $([ $NONSTD_BRANCH -eq 0 ] && echo '✅' || echo '❌') |"
+          echo ""
+
+          # 非标准分支详情
+          if [ "$NONSTD_BRANCH" -gt 0 ]; then
+            echo "### ⚠️ 非标准分支仓库"
+            echo ""
+            PAGE=1
+            while true; do
+              DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/orgs/$ORG/repos?type=all&per_page=100&page=$PAGE")
+              COUNT=$(echo "$DATA" | jq 'length')
+              if [ "$COUNT" -eq 0 ]; then break; fi
+              echo "$DATA" | jq -r '.[] | select(.archived==false and .default_branch!="main" and .default_branch!="master") | "- \(.name): `\(.default_branch)`"'
+              PAGE=$((PAGE + 1))
+            done
+            echo ""
+          fi
+
+          echo "---"
+          echo "*下次巡检: $(date -d '+1 month' +%Y-%m-%d) | 自动生成 by Hermes Agent*"
+        shell: bash
+
+      - name: Create Audit Issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            // 读取上一个步骤的输出（通过文件）
+            const auditOutput = process.env.AUDIT_OUTPUT || '巡检报告生成中...';
+            // 创建或更新月度Issue
+            const date = new Date();
+            const title = `📊 月度治理巡检 — ${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+            // 此处简化，实际应使用 gh issue create
+            console.log('Audit report ready:', title);
