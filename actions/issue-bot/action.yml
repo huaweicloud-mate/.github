@@ -33,3 +33,50 @@ runs:
         GITHUB_EVENT_NAME: ${{ github.event_name }}
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: python3 ${{ github.action_path }}/issue_bot.py
+
+    - name: Auto Assign
+      shell: bash
+      run: |
+        pip install pygithub > /dev/null 2>&1
+        python3 -c "
+import json, os, urllib.request
+from urllib.error import HTTPError
+
+event = json.load(open(os.environ['GITHUB_EVENT_PATH']))
+issue = event.get('issue', {})
+labels = [l['name'] for l in issue.get('labels', [])]
+repo = os.environ['GITHUB_REPOSITORY']
+token = os.environ['GITHUB_TOKEN']
+issue_number = issue['number']
+
+assignee = 'default-triage'
+area_map = {
+    'area/api': 'api-maintainer',
+    'area/frontend': 'web-maintainer',
+    'area/ci-cd': 'devops-maintainer',
+    'area/sdk': 'sdk-maintainer',
+    'area/security': 'security-maintainer',
+    'area/performance': 'performance-maintainer',
+}
+for area, user in area_map.items():
+    if area in labels:
+        assignee = user
+        break
+
+if 'type/bug' in labels and 'priority/critical' in labels:
+    assignee = 'tech-lead'
+
+print(f'Auto-assign: {assignee}')
+
+url = f'https://api.github.com/repos/{repo}/issues/{issue_number}/assignees'
+req = urllib.request.Request(url, data=json.dumps({'assignees': [assignee]}).encode(), method='POST')
+req.add_header('Authorization', f'Bearer {token}')
+req.add_header('Accept', 'application/vnd.github+json')
+try:
+    urllib.request.urlopen(req, timeout=10)
+    print(f'Assigned to {assignee}')
+except HTTPError as e:
+    print(f'Assign skipped: HTTP {e.code}')
+except Exception as e:
+    print(f'Assign skipped: {e}')
+"
