@@ -190,11 +190,38 @@ status/completed        → 已验证 / 管理员关闭
 
 ### 报表类型
 
-| 报表 | 频率 | 内容 | 发送 |
-|------|------|------|------|
-| **周报** | 每周一 09:00 UTC | GitHub+GitCode 合并统计、SLA 达标率、类型分布 | 飞书+邮件 |
-| **月报** | 每月 1 号 | 月度汇总、仓库排行、GitCode 统计 | 飞书+邮件 |
-| **SLA 日报** | 工作日 08:00 UTC | GitHub+GitCode 超时 Issue 清单 | 飞书+邮件 |
+| 报表 | 频率 | 统计范围 | 内容 | 发送 |
+|------|------|---------|------|------|
+| **周报** | 每周一 09:00 UTC | 上周一 ~ 上周日（回顾模式） | 新建/关闭/净变化、SLA 达标率、类型分布、仓库明细、GitCode 统计 | 飞书+邮件 |
+| **月报** | 每月 1 号 | 上月 1 号 ~ 月末（回顾模式） | 月度新建/关闭率、类型占比、仓库排行 TOP10、GitCode 统计 | 飞书+邮件 |
+| **SLA 日报** | 工作日 08:00 UTC | 当前时刻 | 超时 Issue 清单（含详情）、SLA 达标率 | 飞书+邮件 |
+
+### 报表示例
+
+```
+# huaweicloud-mate Issues 周报
+**2026-W31 | 07.27 - 08.02** | 生成时间: 2026-08-03 01:39 UTC
+
+## 概览
+| 指标 | 本周数值 | 总活跃/累计 |
+|------|---------|------------|
+| 本周新建 | 4 | / |
+| 本周关闭 | 3 | / |
+| 本周净变化 | +1 | / |        ← 新建 - 关闭
+...
+```
+
+### 报告归档
+
+所有报表自动归档到私有仓库 `huaweicloud-mate/reports`，按年月分类：
+
+```
+reports/
+└── 2026/
+    ├── weekly/w31.md
+    ├── monthly/2026-07.md
+    └── sla/2026-08-03.md
+```
 
 ### 统计维度
 
@@ -204,18 +231,20 @@ status/completed        → 已验证 / 管理员关闭
 | 按类型/优先级分布 | ✅ | ✅ |
 | SLA 达标率 | ✅ | ✅ |
 | 仓库排行 | ✅ | ✅ |
+| 净变化（新建-关闭） | ✅ | ✅ |
 
 ### 关键文件
 
 | 文件 | 作用 |
 |------|------|
 | `workflows/issue-stats.yml` | 统计+报表触发器 |
-| `workflows/weekly-report.yml` | 周报触发器 |
-| `workflows/monthly-report.yml` | 月报触发器 |
-| `workflows/sla-daily.yml` | SLA 日报触发器 |
-| `scripts/github_stats.py` | GitHub Issue 统计 |
+| `workflows/weekly-report.yml` | 周报触发 + 归档 |
+| `workflows/monthly-report.yml` | 月报触发 + 归档 |
+| `workflows/sla-daily.yml` | SLA 日报触发 + 归档 |
+| `scripts/github_stats.py` | GitHub Issue 统计（自然周/日历月） |
 | `scripts/gitcode_stats.py` | GitCode Issue 统计抓取 |
-| `scripts/stats_report.py` | 合并生成报表 + 双通道发送 |
+| `scripts/stats_report.py` | 合并生成报表 + 双通道发送 + 保存文件 |
+| `scripts/archive_report.sh` | 归档脚本（推送至 reports 仓库） |
 | `templates/report-weekly.md` | 周报模板 |
 | `templates/report-monthly.md` | 月报模板 |
 
