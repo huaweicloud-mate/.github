@@ -16,7 +16,11 @@ HEADERS = {
 }
 
 NOW = datetime.now(timezone.utc)
-WEEK_AGO = NOW - timedelta(days=7)
+
+# 本周范围：本周一 0:00 UTC
+weekday = NOW.weekday()  # 0=周一, 6=周日
+week_start = (NOW - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
+week_end = week_start + timedelta(days=7)
 
 # 本月范围：从本月 1 号开始
 this_month_start = NOW.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -75,16 +79,16 @@ def calc_stats(repo, issues, report_type="weekly"):
     open_issues = [i for i in issues if i["state"] == "open"]
     closed_issues = [i for i in issues if i["state"] == "closed"]
 
-    # 本周新建
+    # 本周新建（自然周：周一 0:00 起）
     new_this_week = [
         i for i in issues
-        if datetime.fromisoformat(i["created_at"].replace("Z", "+00:00")) >= WEEK_AGO
+        if datetime.fromisoformat(i["created_at"].replace("Z", "+00:00")) >= week_start
     ]
 
     # 本周关闭
     closed_this_week = [
         i for i in closed_issues
-        if i.get("closed_at") and datetime.fromisoformat(i["closed_at"].replace("Z", "+00:00")) >= WEEK_AGO
+        if i.get("closed_at") and datetime.fromisoformat(i["closed_at"].replace("Z", "+00:00")) >= week_start
     ]
 
     # 月度新建
