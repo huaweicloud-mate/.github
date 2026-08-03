@@ -4,7 +4,7 @@
 import os
 import sys
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from feishu_notify import send_notification
 from email_notify import send_email
 
@@ -35,6 +35,10 @@ def generate_weekly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
     week_num = now.isocalendar()[1]
     year = now.year
+    weekday = now.weekday()
+    week_start = now - timedelta(days=weekday)
+    week_end = week_start + timedelta(days=6)
+    week_range = f"{week_start.strftime('%m.%d')} - {week_end.strftime('%m.%d')}"
 
     gh = github_data.get("totals", {})
     repos = github_data.get("repos", [])
@@ -52,7 +56,7 @@ def generate_weekly_report(github_data, gitcode_data):
 
     lines = []
     lines.append(f"# huaweicloud-mate Issues 周报")
-    lines.append(f"**{year}-W{week_num:02d}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
+    lines.append(f"**{year}-W{week_num:02d} | {week_range}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append("")
 
     # 概览
@@ -138,8 +142,15 @@ def generate_monthly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
     if now.month == 1:
         report_month = f"{now.year - 1}-12"
+        month_start = now.replace(year=now.year - 1, month=12, day=1)
     else:
         report_month = f"{now.year}-{now.month - 1:02d}"
+        month_start = now.replace(month=now.month - 1, day=1)
+    if month_start.month == 12:
+        month_end_date = month_start.replace(year=month_start.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        month_end_date = month_start.replace(month=month_start.month + 1, day=1) - timedelta(days=1)
+    month_range = f"{month_start.strftime('%m.%d')} - {month_end_date.strftime('%m.%d')}"
 
     gh = github_data.get("totals", {})
     repos = github_data.get("repos", [])
@@ -154,7 +165,7 @@ def generate_monthly_report(github_data, gitcode_data):
 
     lines = []
     lines.append(f"# huaweicloud-mate Issues 月报")
-    lines.append(f"**{report_month}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
+    lines.append(f"**{report_month} | {month_range}** | 生成时间: {now.strftime('%Y-%m-%d %H:%M')} UTC")
     lines.append("")
 
     # 概览
