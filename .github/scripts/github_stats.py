@@ -17,9 +17,9 @@ HEADERS = {
 
 NOW = datetime.now(timezone.utc)
 
-# 本周范围：本周一 0:00 UTC
-weekday = NOW.weekday()  # 0=周一, 6=周日
-week_start = (NOW - timedelta(days=weekday)).replace(hour=0, minute=0, second=0, microsecond=0)
+# 本周范围：上周一 0:00 → 本周一 0:00（回顾上周数据）
+week_day = NOW.weekday()
+week_start = (NOW - timedelta(days=week_day + 7)).replace(hour=0, minute=0, second=0, microsecond=0)
 week_end = week_start + timedelta(days=7)
 
 # 本月范围：从本月 1 号开始

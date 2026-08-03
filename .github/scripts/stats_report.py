@@ -33,12 +33,13 @@ def _level_bar(value, warn, danger):
 
 def generate_weekly_report(github_data, gitcode_data):
     now = datetime.now(timezone.utc)
-    week_num = now.isocalendar()[1]
-    year = now.year
-    weekday = now.weekday()
-    week_start = now - timedelta(days=weekday)
-    week_end = week_start + timedelta(days=6)
-    week_range = f"{week_start.strftime('%m.%d')} - {week_end.strftime('%m.%d')}"
+    # 回顾上周数据
+    last_monday = now - timedelta(days=now.weekday() + 7)
+    last_sunday = last_monday + timedelta(days=6)
+    iso_year, iso_week, _ = last_monday.isocalendar()
+    week_num = iso_week
+    year = iso_year
+    week_range = f"{last_monday.strftime('%m.%d')} - {last_sunday.strftime('%m.%d')}"
 
     gh = github_data.get("totals", {})
     repos = github_data.get("repos", [])
@@ -275,8 +276,11 @@ def main():
         subject = f"[Issue 月报] huaweicloud-mate {report_month}"
         report = generate_monthly_report(github_data, gitcode_data)
     else:
-        week_num = datetime.now(timezone.utc).isocalendar()[1]
-        year = datetime.now(timezone.utc).year
+        # 周报：回顾上周
+        last_monday = datetime.now(timezone.utc) - timedelta(days=datetime.now(timezone.utc).weekday() + 7)
+        iso_year, iso_week, _ = last_monday.isocalendar()
+        year = iso_year
+        week_num = iso_week
         subject = f"[Issue 周报] huaweicloud-mate {year}-W{week_num:02d}"
         report = generate_weekly_report(github_data, gitcode_data)
 

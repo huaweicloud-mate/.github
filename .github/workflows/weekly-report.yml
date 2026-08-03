@@ -57,7 +57,7 @@ jobs:
         env:
           ARCHIVE_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
         run: |
-          YEAR_WEEK=$(python -c "from datetime import datetime; now=datetime.utcnow(); print(f'{now.year}-w{now.isocalendar()[1]:02d}')")
+          YEAR_WEEK=$(python -c "from datetime import datetime, timedelta; now=datetime.utcnow(); lm=now-timedelta(days=now.weekday()+7); y,w,_=lm.isocalendar(); print(f'{y}-w{w:02d}')")
           YEAR=$(echo $YEAR_WEEK | cut -d'-' -f1)
           WEEK_LABEL=$(echo $YEAR_WEEK | cut -d'-' -f2)
           bash .github/scripts/archive_report.sh "output/report.md" "$YEAR/weekly/$WEEK_LABEL.md" "Weekly report $YEAR-$WEEK_LABEL"
