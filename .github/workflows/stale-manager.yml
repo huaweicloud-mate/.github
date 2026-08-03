@@ -1,0 +1,38 @@
+name: Organization Stale Manager
+
+on:
+  schedule:
+    - cron: '30 2 * * 1'  # 每周一 UTC 02:30 (CST 10:30)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  stale-manager:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout .github repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Stale Manager
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ORG_NAME: huaweicloud-mate
+          DRY_RUN: 'false'
+        run: python3 scripts/stale_manager.py
+
+      - name: Dry Run (Sundays)
+        if: github.event.schedule == '0 2 * * 0'
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ORG_NAME: huaweicloud-mate
+          DRY_RUN: 'true'
+        run: python3 scripts/stale_manager.py
