@@ -189,6 +189,11 @@ def main():
 
     # 生成报告
     if report_type == "monthly":
+        now = datetime.now(timezone.utc)
+        if now.month == 1:
+            report_month = f"{now.year - 1}-12"
+        else:
+            report_month = f"{now.year}-{now.month - 1:02d}"
         subject = f"[Issue 月报] huaweicloud-mate {report_month}"
         report = generate_monthly_report(github_data, gitcode_data)
     else:
