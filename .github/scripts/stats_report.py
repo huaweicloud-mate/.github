@@ -131,8 +131,12 @@ def generate_weekly_report(github_data, gitcode_data):
     lines.append("---")
     if br > 0:
         lines.append(f"  **注意**：有 {br} 个 Issue SLA 违约，请及时处理。")
-    if new_w == 0:
-        lines.append("  **提示**：本周无新建 Issue。")
+    if new_w == 0 and closed_w == 0:
+        lines.append("  本周无 Issue 活动。")
+    elif new_w == 0:
+        lines.append(f"  本周无新建 Issue，关闭 {closed_w} 个。")
+    elif closed_w == 0:
+        lines.append(f"  本周新建 {new_w} 个，无关闭。")
     lines.append("")
 
     return "\n".join(lines)
