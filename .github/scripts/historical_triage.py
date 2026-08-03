@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""历史 Issue 批量 Triage"""
+"""Issue Triage 兜底脚本 - 每 6 小时扫描最近 24h 的 Issue"""
 
 import os
 import json
 import requests
+from datetime import datetime, timedelta, timezone
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_ORG = "huaweicloud-mate"
@@ -12,6 +13,8 @@ HEADERS = {
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
+
+LOOKBACK_HOURS = 24
 
 KEYWORDS = {
     "type/bug": ["bug", "error", "crash", "broken", "fail", "exception", "traceback", "fix", "bug report", "报错", "崩溃", "错误", "异常"],
@@ -37,10 +40,12 @@ def get_repos():
 
 
 def get_issues(repo_full, state="open"):
+    """获取 Issue（仅最近 24h 创建）"""
+    since = (datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)).isoformat()
     issues = []
     page = 1
     while True:
-        url = f"https://api.github.com/repos/{repo_full}/issues?state={state}&per_page=100&page={page}"
+        url = f"https://api.github.com/repos/{repo_full}/issues?state={state}&per_page=100&page={page}&since={since}&sort=created&direction=desc"
         resp = requests.get(url, headers=HEADERS)
         if resp.status_code != 200:
             break

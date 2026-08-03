@@ -1,6 +1,8 @@
-name: Historical Issue Triage
+name: Issue Triage Fallback
 
 on:
+  schedule:
+    - cron: "0 */6 * * *"   # 每 6 小时兜底
   workflow_dispatch:
 
 permissions:
