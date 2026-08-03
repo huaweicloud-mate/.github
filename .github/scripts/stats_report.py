@@ -204,6 +204,13 @@ def main():
 
     print(report)
 
+    # 保存报告文件（供归档使用）
+    os.makedirs("output", exist_ok=True)
+    report_path = os.environ.get("REPORT_FILE", "output/report.md")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    print(f"Report saved to {report_path}")
+
     # 发送飞书通知
     event_type = "report.monthly" if report_type == "monthly" else "report.weekly"
     send_notification(subject=subject, body=report, event_type=event_type)

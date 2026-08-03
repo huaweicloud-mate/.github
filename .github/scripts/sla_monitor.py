@@ -259,6 +259,10 @@ def main():
     if all_results and REPORT_ONLY:
         report = generate_daily_report(all_results)
         print(report)
+        # 保存报告文件
+        os.makedirs("output", exist_ok=True)
+        with open("output/sla_report.md", "w", encoding="utf-8") as f:
+            f.write(report)
         send_notification(
             subject=f"[SLA 日报] {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
             body=report,

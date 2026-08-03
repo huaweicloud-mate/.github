@@ -42,6 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
           REPORT_TYPE: "weekly"
+          REPORT_FILE: "output/report.md"
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
@@ -51,3 +52,13 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_REPORT_TO: ${{ secrets.EMAIL_REPORT_TO }}
         run: python .github/scripts/stats_report.py --type weekly
+
+      - name: Archive Report
+        env:
+          ARCHIVE_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
+          YEAR: ${{ github.event.schedule || '2026' }}
+          WEEKNUM: ${{ github.event.schedule || '31' }}
+        run: |
+          YEAR=$(date -u +%Y)
+          WEEKNUM=$(date -u +%V)
+          bash .github/scripts/archive_report.sh "output/report.md" "$YEAR/weekly/w$WEEKNUM.md" "Weekly report $YEAR-W$WEEKNUM"

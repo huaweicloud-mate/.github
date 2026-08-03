@@ -43,6 +43,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ORG: "huaweicloud-mate"
           REPORT_TYPE: "monthly"
+          REPORT_FILE: "output/report.md"
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
           FEISHU_ADMIN_OPEN_ID: ${{ secrets.FEISHU_ADMIN_OPEN_ID }}
@@ -52,3 +53,15 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_REPORT_TO: ${{ secrets.EMAIL_REPORT_TO }}
         run: python .github/scripts/stats_report.py --type monthly
+
+      - name: Archive Report
+        env:
+          ARCHIVE_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
+        run: |
+          YEAR=$(date -u +%Y)
+          if [ $(date -u +%-m) -eq 1 ]; then
+            MONTH="$(($(date -u +%Y) - 1))-12"
+          else
+            MONTH="$(date -u +%Y)-$(printf '%02d' $(($(date -u +%-m) - 1)))"
+          fi
+          bash .github/scripts/archive_report.sh "output/report.md" "$YEAR/monthly/$MONTH.md" "Monthly report $MONTH"
