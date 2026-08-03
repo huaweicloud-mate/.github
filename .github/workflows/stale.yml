@@ -14,18 +14,6 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Load stale rules
-        id: config
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const yaml = require('js-yaml');
-            const config = yaml.load(fs.readFileSync('configs/stale-rules.yml', 'utf8'));
-            return config;
-
       - name: Run Stale Check
         uses: actions/stale@v9
         with:
