@@ -1,0 +1,81 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "area/ci"
+
+  # Python (pip)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/python"
+
+  # Java (Maven)
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/java"
+
+  # Go
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/go"
+
+  # Node.js (npm)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/javascript"
+
+  # .NET (NuGet)
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/dotnet"
+
+  # PHP (Composer)
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "lang/php"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "type/dependencies"
+      - "area/docker"
