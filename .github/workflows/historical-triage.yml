@@ -23,5 +23,5 @@ jobs:
 
       - name: Run Historical Triage
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
         run: python .github/scripts/historical_triage.py
