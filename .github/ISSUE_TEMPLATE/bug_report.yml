@@ -1,0 +1,69 @@
+name: Bug Report
+description: 🐛 报告一个 Bug
+title: "[Bug]: "
+labels: ["type/bug", "agent/needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你花时间报告 Bug！请填写以下信息帮助我们快速定位问题。
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本信息
+      description: 你使用的项目版本（如 v1.2.3）
+      placeholder: "v1.2.3"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug 描述
+      description: 清晰简洁地描述你遇到的问题
+      placeholder: "当执行...时，预期发生...，实际发生..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 提供最小可复现示例或步骤
+      placeholder: |
+        1. 安装...
+        2. 配置...
+        3. 运行...
+        4. 看到错误...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你期望发生什么
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: |
+        操作系统、语言版本、依赖版本等
+      placeholder: |
+        - OS: Ubuntu 22.04
+        - Python: 3.10
+        - 依赖版本: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 附加信息
+      description: 日志、截图、相关链接等
+    validations:
+      required: false
