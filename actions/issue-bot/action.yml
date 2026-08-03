@@ -1,35 +1,36 @@
 name: 'Issue Management Bot'
-description: 'AI-powered issue triage and management for huaweicloud-mate'
+description: 'AI -powered issue triage and management for huaw eicloud-mate'
 inputs:
   app-id:
-    description: 'GitHub App ID'
+    descripti on: 'GitHub App ID'
     required: false
-  app-private-key:
-    description: 'GitHub App Private Key'
+  app -private-key:
+    description: 'GitHub App Pr ivate Key'
     required: false
-  app-installation-id:
-    description: 'GitHub App Installation ID'
+  app-installa tion-id:
+    description: 'GitHub App Install ation ID'
     required: false
 runs:
-  using: 'composite'
+  using:  'composite'
   steps:
-    - name: Set up Python
+    - name: Set up Pytho n
       uses: actions/setup-python@v5
-      with:
+      w ith:
         python-version: '3.12'
     
-    - name: Install dependencies
-      shell: bash
+     - name: Install dependencies
+      shell: bas h
       run: pip install cryptography
     
-    - name: Run Issue Bot
+     - name: Run Issue Bot
       shell: bash
-      env:
-        APP_ID: ${{ inputs.app-id || secrets.APP_ID }}
-        APP_PRIVATE_KEY: ${{ inputs.app-private-key || secrets.APP_PRIVATE_KEY }}
-        APP_INSTALLATION_ID: ${{ inputs.app-installation-id || secrets.APP_INSTALLATION_ID }}
-        GITHUB_TOKEN: ${{ github.token }}
-        GITHUB_EVENT_PATH: ${{ github.event_path }}
-        GITHUB_EVENT_NAME: ${{ github.event_name }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-      run: python3 ${{ github.action_path }}/issue_bot.py
+       env:
+        APP_ID: ${{ inputs.app-id ||  secrets.APP_ID }}
+        APP_PRIVATE_KEY: ${ { inputs.app-private-key || secrets.APP_PRIVA TE_KEY }}
+        APP_INSTALLATION_ID: ${{ in puts.app-installation-id || secrets.APP_INSTA LLATION_ID }}
+        GITHUB_TOKEN: ${{ githu b.token }}
+        GITHUB_EVENT_PATH: ${{ git hub.event_path }}
+        GITHUB_EVENT_NAME:  ${{ github.event_name }}
+        GITHUB_REPOS ITORY: ${{ github.repository }}
+      run: py thon3 ${{ github.action_path }}/issue_bot.py
+ 
