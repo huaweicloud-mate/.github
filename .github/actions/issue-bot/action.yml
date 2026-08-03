@@ -35,42 +35,42 @@ runs:
       run: python3 ${{ github.action_path }}/issue_bot.py
 
     - name: Auto Assign
-      shell: bash
-      run: |
-        python3 -c "
-import json, os
-event_path = '${{ github.event_path }}'
-issue = json.load(open(event_path))['issue']
-labels = [l['name'] for l in issue.get('labels', [])]
-assignee = 'default-triage'
+      uses: actions/github-script@v7
+      with:
+        script: |
 
-# area 映射
-area_map = {
-    'area/api': 'api-maintainer',
-    'area/frontend': 'web-maintainer',
-    'area/ci-cd': 'devops-maintainer',
-    'area/sdk': 'sdk-maintainer',
-    'area/security': 'security-maintainer',
-    'area/performance': 'performance-maintainer',
-}
-for area, user in area_map.items():
-    if area in labels:
-        assignee = user
-        break
+          const issue = context.payload.issue;
+          const labels = (issue.labels || []).map(l => l.name);
+          if (issue.assignees && issue.assignees.length > 0) {
+            console.log('Already assigned, skipping');
+            return;
+          }
 
-# bug + critical → tech-lead
-if 'type/bug' in labels and 'priority/critical' in labels:
-    assignee = 'tech-lead'
+          const areaMap = {
+            'area/api': 'api-maintainer',
+            'area/frontend': 'web-maintainer',
+            'area/ci-cd': 'devops-maintainer',
+            'area/sdk': 'sdk-maintainer',
+            'area/security': 'security-maintainer',
+            'area/performance': 'performance-maintainer',
+          };
 
-print(f'Auto-assign: {assignee}')
+          let assignee = 'default-triage';
+          for (const [area, user] of Object.entries(areaMap)) {
+            if (labels.includes(area)) {
+              assignee = user;
+              break;
+            }
+          }
 
-import urllib.request
-url = f'{os.environ[\"GITHUB_API_URL\"]}/repos/{os.environ[\"GITHUB_REPOSITORY\"]}/issues/${{ github.event.issue.number }}/assignees'
-req = urllib.request.Request(url, data=json.dumps({'assignees': [assignee]}).encode(), method='POST')
-req.add_header('Authorization', 'Bearer ${{ github.token }}')
-req.add_header('Accept', 'application/vnd.github+json')
-try:
-    urllib.request.urlopen(req)
-except Exception as e:
-    print(f'Assign failed (maybe user not in org): {e}')
-"
+          if (labels.includes('type/bug') && labels.includes('priority/critical')) {
+            assignee = 'tech-lead';
+          }
+
+          console.log(`Auto-assign: ${assignee}`);
+          await github.rest.issues.addAssignees({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            assignees: [assignee]
+          });
