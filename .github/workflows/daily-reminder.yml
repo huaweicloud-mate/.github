@@ -1,0 +1,45 @@
+name: Daily Issue Reminder
+
+on:
+  schedule:
+    - cron: "0 1 * * 1-5"   # 工作日 UTC 01:00 (CST 09:00)
+  workflow_dispatch:
+
+permissions:
+  issues: read
+  contents: read
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Generate Reminder
+        env:
+          GITHUB_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
+          GITHUB_ORG: "huaweicloud-mate"
+        run: |
+          mkdir -p output
+          python3 .github/scripts/daily_reminder.py > output/reminder.md
+
+      - name: Send Email
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_REPORT_TO: ${{ secrets.EMAIL_REPORT_TO }}
+          SUBJECT: "[Daily Reminder] huaweicloud-mate Open Issues"
+          BODY_FILE: "output/reminder.md"
+        run: |
+          export BODY=$(cat output/reminder.md)
+          python3 .github/scripts/email_notify.py
