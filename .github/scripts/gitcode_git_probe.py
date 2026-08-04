@@ -1,33 +1,31 @@
 #!/usr/bin/env python3
-"""Probe GitCode git auth URL formats"""
-import os, subprocess, sys
+"""Probe GitCode git push auth - test actual write permission"""
+import os, subprocess, sys, tempfile
 
 TOKEN = os.environ.get("GITCODE_TOKEN", "")
-USER = os.environ.get("GITCODE_USERNAME", "")
 REPO = "hd-vector/final-e2e-test"
 
-formats = [
-    ("oauth2-token", f"https://oauth2:{TOKEN}@gitcode.com/{REPO}.git"),
-    ("user-token", f"https://{USER}:{TOKEN}@gitcode.com/{REPO}.git"),
-    ("token-only", f"https://{TOKEN}@gitcode.com/{REPO}.git"),
-    ("oauth2-user", f"https://oauth2:{USER}:{TOKEN}@gitcode.com/{REPO}.git"),
-    ("user-oauth2token", f"https://{USER}:oauth2:{TOKEN}@gitcode.com/{REPO}.git"),
-]
+url = f"https://oauth2:{TOKEN}@gitcode.com/{REPO}.git"
 
-for name, url in formats:
-    # mask token in output
-    masked = url.replace(TOKEN, "***") if TOKEN else url
-    r = subprocess.run(
-        ["git", "ls-remote", url, "HEAD"],
-        capture_output=True, text=True, timeout=30
-    )
-    if r.returncode == 0:
-        print(f"[OK]   {name}: {masked}")
-        print("  -> SUCCESS: this format works!")
-        sys.exit(0)
-    else:
-        # get error message
-        err = r.stderr.strip().split("\n")
-        key = next((l for l in err if "fatal" in l or "Authentication" in l or "denied" in l or "removed" in l), r.stderr.strip()[:120])
-        print(f"[FAIL] {name}: {masked}")
-        print(f"  -> {key[:150]}")
+# create temp repo with a commit
+tmp = tempfile.mkdtemp(prefix="gitcode-push-")
+subprocess.run(["git", "init", "-b", "main"], cwd=tmp, capture_output=True)
+with open(os.path.join(tmp, "push-test.txt"), "w") as f:
+    f.write("gitcode push auth test\n")
+subprocess.run(["git", "add", "."], cwd=tmp, capture_output=True)
+subprocess.run(["git", "-c", "user.email=bot@test.dev", "-c", "user.name=test", "commit", "-m", "push auth test"], cwd=tmp, capture_output=True)
+
+# try push to a test branch
+r = subprocess.run(["git", "push", url, "main:auth-test-branch"], cwd=tmp, capture_output=True, text=True, timeout=60)
+if r.returncode == 0:
+    print("[OK]   PUSH SUCCESS - token has write access")
+    # cleanup test branch
+    subprocess.run(["git", "push", url, "--delete", "auth-test-branch"], cwd=tmp, capture_output=True, timeout=60)
+    print("[OK]   test branch deleted")
+    sys.exit(0)
+else:
+    print("[FAIL] PUSH FAILED")
+    for line in r.stderr.split("\n"):
+        if line.strip() and ("fatal" in line.lower() or "denied" in line.lower() or "error" in line.lower() or "permission" in line.lower() or "removed" in line.lower() or "remote" in line.lower()):
+            print(f"  -> {line.strip()[:200]}")
+    sys.exit(1)
