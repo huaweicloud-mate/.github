@@ -55,7 +55,7 @@ breach:
   label: "sla/breach"
 
 # 升级标签
-escalation:
+escalation_label:
   label: "escalation"
 
 # 通知接收人
