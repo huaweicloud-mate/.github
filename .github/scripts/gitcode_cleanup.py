@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Clean up probe test repos on GitCode"""
+"""Clean up probe/test repos on GitCode"""
 import json, os
 import urllib.request, urllib.error
 
@@ -22,6 +22,7 @@ def req(method, path, data=None):
         print(f"[FAIL] {method} {path} -> {e}")
 
 
-# Try delete endpoints for both probe repos
+# Clean up test repos
 req("DELETE", "/repos/hd-vector/__probe_invalid_name__")
 req("DELETE", "/repos/shuangzhangj/__probe_invalid_name__")
+req("DELETE", "/repos/hd-vector/security-alert-test")
