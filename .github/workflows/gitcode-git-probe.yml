@@ -1,0 +1,17 @@
+name: GitCode Git Auth Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Git Auth Probe
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          GITCODE_USERNAME: ${{ secrets.GITCODE_USERNAME }}
+        run: python3 .github/scripts/gitcode_git_probe.py
