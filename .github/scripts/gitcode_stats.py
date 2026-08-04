@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 GITCODE_TOKEN = os.environ.get("GITCODE_TOKEN", "")
 GITCODE_ORG = os.environ.get("GITCODE_ORG", "hd-vector")
-GITCODE_API = "https://gitcode.com/api/v5"
+GITCODE_API = "https://gitcode.com/api/v4"
 HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN} if GITCODE_TOKEN else {}
 
 
