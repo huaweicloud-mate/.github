@@ -10,7 +10,7 @@ from email_notify import send_email
 
 GITCODE_TOKEN = os.environ.get("GITCODE_TOKEN", "")
 GITCODE_ORG = os.environ.get("GITCODE_ORG", "hd-vector")
-GITCODE_API = "https://gitcode.com/api/v4"
+GITCODE_API = "https://gitcode.com/api/v5"
 HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN}
 
 REPORT_ONLY = "--report" in sys.argv
