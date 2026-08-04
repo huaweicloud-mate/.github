@@ -173,6 +173,11 @@ def add_labels(repo_full, issue_number, labels):
     return resp.ok
 
 
+def trunc(s, n=40):
+    s = str(s)
+    return s if len(s) <= n else s[:n] + "..."
+
+
 def generate_daily_report(sla_results):
     """生成 SLA 日报"""
     breach_items = [r for r in sla_results if r["status"] in ("breach", "escalation")]
@@ -200,7 +205,7 @@ def generate_daily_report(sla_results):
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
             alerts = "; ".join(item.get("alerts", []))
             lines.append(
-                f"| {item['repo']} | [#{item['number']}]({url}) | {item['title']} "
+                f"| {item['repo']} | [#{item['number']}]({url}) | {trunc(item['title'], 40)} "
                 f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {item['status']} | {alerts} |"
             )
         lines.append("")
@@ -214,7 +219,7 @@ def generate_daily_report(sla_results):
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
             alerts = "; ".join(item.get("alerts", []))
             lines.append(
-                f"| {item['repo']} | [#{item['number']}]({url}) | {item['title']} "
+                f"| {item['repo']} | [#{item['number']}]({url}) | {trunc(item['title'], 40)} "
                 f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {alerts} |"
             )
         lines.append("")
