@@ -20,9 +20,9 @@ body { margin:0; padding:0; background:#f6f8fa; font-family:-apple-system,BlinkM
 .content h2 { font-size:16px; color:#1f2328; border-bottom:2px solid #0366d6; padding-bottom:6px; margin:24px 0 12px; }
 .content h2:first-child { margin-top:0; }
 .content h3 { font-size:14px; color:#1f2328; margin:16px 0 8px; }
-table { width:100%; border-collapse:collapse; margin:8px 0 16px; font-size:13px; }
+table { width:100%; table-layout:fixed; border-collapse:collapse; margin:8px 0 16px; font-size:13px; }
 th { background:#f0f3f6; color:#1f2328; font-weight:600; text-align:left; padding:8px 12px; border:1px solid #d0d7de; }
-td { padding:8px 12px; border:1px solid #d0d7de; color:#1f2328; }
+td { padding:8px 12px; border:1px solid #d0d7de; color:#1f2328; word-wrap:break-word; overflow-wrap:break-word; }
 tr:nth-child(even) td { background:#f8fafc; }
 p { margin:6px 0; line-height:1.6; color:#1f2328; font-size:13px; }
 .footer { background:#f0f3f6; color:#656d76; text-align:center; padding:16px; font-size:11px; border-top:1px solid #d0d7de; }
