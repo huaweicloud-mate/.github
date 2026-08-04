@@ -22,7 +22,8 @@ jobs:
       - name: Mirror to GitCode
         run: |
           REPO_NAME=$(basename "${{ github.repository }}")
-          GITCODE_URL="https://${{ secrets.GITCODE_USERNAME }}:${{ secrets.GITCODE_TOKEN }}@gitcode.com/hd-vector/${REPO_NAME}.git"
+          # GitCode requires OAuth2 token format (PAT-based), not password auth
+          GITCODE_URL="https://oauth2:${{ secrets.GITCODE_TOKEN }}@gitcode.com/hd-vector/${REPO_NAME}.git"
           git remote add gitcode "${GITCODE_URL}" || git remote set-url gitcode "${GITCODE_URL}"
           git push gitcode --all --force
           git push gitcode --tags --force
