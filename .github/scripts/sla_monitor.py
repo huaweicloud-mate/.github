@@ -194,13 +194,13 @@ def generate_daily_report(sla_results):
     if breach_items:
         lines.append(f"## SLA 违约/升级（{len(breach_items)} 个）")
         lines.append("")
-        lines.append("| 仓库 | Issue | 优先级 | 超时(h) | 状态 | 详情 |")
-        lines.append("|------|-------|--------|---------|------|------|")
+        lines.append("| 仓库 | Issue | 标题 | 优先级 | 超时(h) | 状态 | 详情 |")
+        lines.append("|------|-------|------|--------|---------|------|------|")
         for item in breach_items:
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
             alerts = "; ".join(item.get("alerts", []))
             lines.append(
-                f"| {item['repo']} | [#{item['number']}]({url}) "
+                f"| {item['repo']} | [#{item['number']}]({url}) | {item['title']} "
                 f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {item['status']} | {alerts} |"
             )
         lines.append("")
@@ -208,13 +208,13 @@ def generate_daily_report(sla_results):
     if warning_items:
         lines.append(f"## SLA 预警（{len(warning_items)} 个）")
         lines.append("")
-        lines.append("| 仓库 | Issue | 优先级 | 超时(h) | 详情 |")
-        lines.append("|------|-------|--------|---------|------|")
+        lines.append("| 仓库 | Issue | 标题 | 优先级 | 超时(h) | 详情 |")
+        lines.append("|------|-------|------|--------|---------|------|")
         for item in warning_items:
             url = f"https://github.com/{item['repo']}/issues/{item['number']}"
             alerts = "; ".join(item.get("alerts", []))
             lines.append(
-                f"| {item['repo']} | [#{item['number']}]({url}) "
+                f"| {item['repo']} | [#{item['number']}]({url}) | {item['title']} "
                 f"| {item['priority']} | {item['elapsed_hours']:.0f}h | {alerts} |"
             )
         lines.append("")
