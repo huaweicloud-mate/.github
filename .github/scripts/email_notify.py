@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 CSS = """
 body { margin:0; padding:0; background:#f6f8fa; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif,'Microsoft YaHei'; }
-.container { max-width:660px; margin:0 auto; background:#fff; }
+.container { width:100%; max-width:none; margin:0; background:#fff; }
 .header { background:linear-gradient(135deg, #0366d6, #0969da); color:#fff; padding:28px 32px; }
 .header h1 { margin:0; font-size:20px; font-weight:600; }
 .header .sub { font-size:13px; opacity:.75; margin-top:6px; }
