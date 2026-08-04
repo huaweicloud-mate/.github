@@ -92,7 +92,7 @@
 
 | 序号 | 检查项 | 要求 | 严重程度 |
 |:----:|--------|------|:--------:|
-| L2-1 | 分支保护 | require PR + ≥1 review + dismiss stale reviews | **阻断** |
+| L2-1 | 分支保护 | require PR + ≥2 review + dismiss stale reviews | **阻断** |
 | L2-2 | 贡献者冗余 | ≥2 名写权限成员 | **阻断** |
 | L2-3 | SECURITY.md | 存在安全漏洞报告策略文件 | **阻断** |
 | L2-4 | CONTRIBUTING.md | 存在贡献指南文件 | **阻断** |
