@@ -20,9 +20,17 @@ body { margin:0; padding:0; background:#f6f8fa; font-family:-apple-system,BlinkM
 .content h2 { font-size:16px; color:#1f2328; border-bottom:2px solid #0366d6; padding-bottom:6px; margin:24px 0 12px; }
 .content h2:first-child { margin-top:0; }
 .content h3 { font-size:14px; color:#1f2328; margin:16px 0 8px; }
-table { width:100%; table-layout:fixed; border-collapse:collapse; margin:8px 0 16px; font-size:13px; }
+table { width:100%; border-collapse:collapse; margin:8px 0 16px; font-size:13px; table-layout:fixed; }
 th { background:#f0f3f6; color:#1f2328; font-weight:600; text-align:left; padding:8px 12px; border:1px solid #d0d7de; }
-td { padding:8px 12px; border:1px solid #d0d7de; color:#1f2328; word-wrap:break-word; overflow-wrap:break-word; }
+td { padding:8px 12px; border:1px solid #d0d7de; color:#1f2328; word-wrap:break-word; overflow-wrap:break-word; vertical-align:top; }
+
+/* SLA report tables: fixed column widths to keep header/body aligned */
+.sla-table th, .sla-table td { white-space: normal; }
+.sla-table th:first-child, .sla-table td:first-child { width: 20%; }
+.sla-table th:nth-child(2), .sla-table td:nth-child(2) { width: 8%; }
+.sla-table th:nth-child(3), .sla-table td:nth-child(3) { width: 26%; }
+.sla-table th:last-child, .sla-table td:last-child { width: 20%; }
+
 tr:nth-child(even) td { background:#f8fafc; }
 p { margin:6px 0; line-height:1.6; color:#1f2328; font-size:13px; }
 .footer { background:#f0f3f6; color:#656d76; text-align:center; padding:16px; font-size:11px; border-top:1px solid #d0d7de; }
@@ -106,7 +114,7 @@ def md_to_html(markdown):
 def build_table(rows):
     if not rows:
         return ''
-    html = ['<table>']
+    html = ['<table class="sla-table">']
     header_done = False
     for row in rows:
         row = row.strip().strip('|')
