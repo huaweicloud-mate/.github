@@ -141,7 +141,8 @@ status/completed        → 已验证 / 管理员关闭
 
 ### 说明
 - GitCode Issue **在 GitCode 原生平台独立管理**，不同步到 GitHub
-- 通过 GitCode API（GitLab 兼容）远程操作标签、评论、状态
+- 通过 GitCode API 远程操作标签、评论、状态
+- API 基地址：`https://gitcode.com/api/v4`（当前脚本实现）
 - `hd-vector` 组织下所有仓库自动覆盖
 
 ### 功能模块
