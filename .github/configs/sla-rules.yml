@@ -39,11 +39,11 @@ escalation:
     hours: 24
     description: "24 小时未解决则升级"
   priority/medium:
-    workdays: 3
-    description: "3 个工作日未解决则升级"
+    hours: 72
+    description: "72 小时（3 天）未解决则升级"
   priority/low:
-    workdays: 14
-    description: "14 个工作日未解决则升级"
+    hours: 336
+    description: "336 小时（14 天）未解决则升级"
 
 # 预警时间
 warning:
