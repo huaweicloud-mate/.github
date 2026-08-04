@@ -16,3 +16,8 @@ jobs:
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
           GITCODE_ORG: "hd-vector"
         run: python3 .github/scripts/gitcode_probe.py
+
+      - name: Cleanup Test Repos
+        env:
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: python3 .github/scripts/gitcode_cleanup.py
