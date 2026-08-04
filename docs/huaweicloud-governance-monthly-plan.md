@@ -54,7 +54,7 @@ W4 (D22-D30)    P1 筑基：CodeQL + 自动巡检上线 + 月度报告
 | **huaweicloud-mate/.github 治理规范** | ✅ | GOVERNANCE.md 已推送，定义三级准入体系 + 9子类型→4等级 |
 | **huaweicloud-mate/.github 模板补齐** | ✅ | dependabot.yml / governance-audit.yml / bug_report.yml / feature_request.yml 已推送 |
 | **Stale 集中管理改造** | ✅ | stale_manager.py + workflow + 存量清理 + 建仓脚本去重（同步推送到 huaweicloud-mate） |
-| **建仓流程文档** | ✅ | v1.1 已发布，按 repo_creator.py (1102行) 最新逻辑校准 |
+| **建仓流程文档** | ✅ | v1.1 已发布，按 repo_creator.py 最新逻辑校准 |
 | **月度计划** | ✅ | v4.0 含 Step 0 定标 + W1-W4 分阶段计划 |
 | **组织模板文件** | 📦 | huaweicloud/.github (14个) + repository-requests (5个) 本地就绪 |
 
