@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GitCode Issues 统计抓取脚本 - 仅统计，不同步"""
+"""GitCode Issues 统计抓取脚本 - 仅统计，不同步 (API v5)"""
 
 import os
 import json
@@ -8,18 +8,18 @@ from datetime import datetime, timezone
 
 GITCODE_TOKEN = os.environ.get("GITCODE_TOKEN", "")
 GITCODE_ORG = os.environ.get("GITCODE_ORG", "hd-vector")
-GITCODE_API = "https://gitcode.com/api/v4"
-HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN} if GITCODE_TOKEN else {}
+GITCODE_API = "https://api.gitcode.com/api/v5"
+HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN, "Content-Type": "application/json"} if GITCODE_TOKEN else {}
 
 
-def get_org_projects():
-    """获取组织下所有项目"""
+def get_org_repos():
+    """获取组织下所有仓库（v5: /orgs/{org}/repos）"""
     if not GITCODE_TOKEN:
         return {"error": "GITCODE_TOKEN not set"}
 
-    url = f"{GITCODE_API}/groups/{GITCODE_ORG}/projects?per_page=100"
+    url = f"{GITCODE_API}/orgs/{GITCODE_ORG}/repos?per_page=100"
     try:
-        resp = requests.get(url, headers=HEADERS)
+        resp = requests.get(url, headers=HEADERS, timeout=30)
         if resp.status_code == 200:
             return resp.json()
         return {"error": f"HTTP {resp.status_code}", "message": resp.text}
@@ -27,18 +27,17 @@ def get_org_projects():
         return {"error": str(e)}
 
 
-def get_project_issues(project_id):
-    """获取项目 Issue 统计"""
+def get_repo_issues(owner, repo):
+    """获取仓库所有 Issue"""
     if not GITCODE_TOKEN:
         return []
 
-    # 尝试获取全部 Issue
     issues = []
     page = 1
     while True:
-        url = f"{GITCODE_API}/projects/{project_id}/issues?per_page=100&page={page}"
+        url = f"{GITCODE_API}/repos/{owner}/{repo}/issues?per_page=100&page={page}"
         try:
-            resp = requests.get(url, headers=HEADERS)
+            resp = requests.get(url, headers=HEADERS, timeout=30)
             if resp.status_code != 200:
                 break
             data = resp.json()
@@ -67,37 +66,32 @@ def main():
         "error": None,
     }
 
-    projects = get_org_projects()
+    repos = get_org_repos()
 
-    if isinstance(projects, dict) and "error" in projects:
-        result["error"] = projects["error"]
+    if isinstance(repos, dict) and "error" in repos:
+        result["error"] = repos["error"]
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
 
-    # 兼容不同 API 响应格式
-    if isinstance(projects, list):
-        project_list = projects
-    elif isinstance(projects, dict):
-        project_list = projects.get("data", projects.get("items", []))
+    if isinstance(repos, list):
+        repo_list = repos
+    elif isinstance(repos, dict):
+        repo_list = repos.get("data", repos.get("items", []))
     else:
-        project_list = []
+        repo_list = []
 
     result["summary"]["accessible"] = True
-    result["summary"]["total_projects"] = len(project_list)
+    result["summary"]["total_projects"] = len(repo_list)
 
-    for project in project_list:
-        project_id = project.get("id") or project.get("project_id")
-        project_name = project.get("name", "unknown")
-        project_path = project.get("path_with_namespace", project_name)
-
-        if not project_id:
+    for repo in repo_list:
+        repo_name = repo.get("path") or repo.get("name") or repo.get("full_name", "").split("/")[-1]
+        if not repo_name:
             continue
 
-        issues = get_project_issues(project_id)
+        issues = get_repo_issues(GITCODE_ORG, repo_name)
         open_issues = [i for i in issues if i.get("state") == "opened"]
         closed_issues = [i for i in issues if i.get("state") == "closed"]
 
-        # 按标签统计
         label_dist = {}
         for issue in issues:
             for label in issue.get("labels", []):
@@ -105,8 +99,8 @@ def main():
                 label_dist[label_name] = label_dist.get(label_name, 0) + 1
 
         project_stats = {
-            "name": project_name,
-            "path": project_path,
+            "name": repo_name,
+            "path": f"{GITCODE_ORG}/{repo_name}",
             "total": len(issues),
             "open": len(open_issues),
             "closed": len(closed_issues),

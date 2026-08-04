@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""GitCode Issue Triage - 自动分类打标签"""
+"""GitCode Issue Triage - 自动分类打标签 (API v5)"""
 
 import os
 import json
 import re
 import requests
-from datetime import datetime, timezone
 
 GITCODE_TOKEN = os.environ.get("GITCODE_TOKEN", "")
 GITCODE_ORG = os.environ.get("GITCODE_ORG", "hd-vector")
-GITCODE_API = "https://gitcode.com/api/v4"
-HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN}
+GITCODE_API = "https://api.gitcode.com/api/v5"
+HEADERS = {"PRIVATE-TOKEN": GITCODE_TOKEN, "Content-Type": "application/json"}
 
 KEYWORDS = {
     "type/bug": ["bug", "错误", "crash", "崩溃", "报错", "异常", "fix", "broken"],
@@ -26,8 +25,9 @@ PRIORITIES = {
 }
 
 
-def get_projects():
-    url = f"{GITCODE_API}/groups/{GITCODE_ORG}/projects?per_page=100"
+def get_repos():
+    """获取组织下所有仓库（v5: /orgs/{org}/repos）"""
+    url = f"{GITCODE_API}/orgs/{GITCODE_ORG}/repos?per_page=100"
     resp = requests.get(url, headers=HEADERS, timeout=30)
     if resp.status_code != 200:
         return []
@@ -37,11 +37,12 @@ def get_projects():
     return data.get("data", data.get("items", []))
 
 
-def get_project_issues(project_id, state="opened"):
+def get_repo_issues(owner, repo):
+    """获取仓库所有 Issue（v5: /repos/{owner}/{repo}/issues）"""
     issues = []
     page = 1
     while True:
-        url = f"{GITCODE_API}/projects/{project_id}/issues?state={state}&per_page=100&page={page}"
+        url = f"{GITCODE_API}/repos/{owner}/{repo}/issues?state=opened&per_page=100&page={page}"
         resp = requests.get(url, headers=HEADERS, timeout=30)
         if resp.status_code != 200:
             break
@@ -53,14 +54,14 @@ def get_project_issues(project_id, state="opened"):
     return issues
 
 
-def update_issue(project_id, issue_iid, data):
-    url = f"{GITCODE_API}/projects/{project_id}/issues/{issue_iid}"
-    resp = requests.put(url, headers=HEADERS, json=data, timeout=15)
+def update_issue(owner, repo, number, data):
+    url = f"{GITCODE_API}/repos/{owner}/{repo}/issues/{number}"
+    resp = requests.patch(url, headers=HEADERS, json=data, timeout=15)
     return resp.status_code in (200, 201)
 
 
-def add_note(project_id, issue_iid, body):
-    url = f"{GITCODE_API}/projects/{project_id}/issues/{issue_iid}/notes"
+def add_comment(owner, repo, number, body):
+    url = f"{GITCODE_API}/repos/{owner}/{repo}/issues/{number}/comments"
     resp = requests.post(url, headers=HEADERS, json={"body": body}, timeout=15)
     return resp.status_code in (200, 201)
 
@@ -89,24 +90,22 @@ def main():
         print("GITCODE_TOKEN not set, exiting")
         return
 
-    print(f"GitCode Triage Bot - scanning {GITCODE_ORG}")
-    projects = get_projects()
+    print(f"GitCode Triage Bot (v5) - scanning {GITCODE_ORG}")
+    repos = get_repos()
     total_updated = 0
 
-    for project in projects:
-        project_id = project.get("id") or project.get("project_id")
-        project_name = project.get("name", "unknown")
-        if not project_id:
+    for repo in repos:
+        repo_name = repo.get("path") or repo.get("name") or repo.get("full_name", "").split("/")[-1]
+        if not repo_name:
             continue
 
-        issues = get_project_issues(project_id)
+        issues = get_repo_issues(GITCODE_ORG, repo_name)
         for issue in issues:
-            iid = issue.get("iid", 0)
+            number = issue.get("number", 0)
             title = issue.get("title", "")
-            body = issue.get("description", "") or ""
-            existing_labels = issue.get("labels", [])
+            body = issue.get("description", "") or issue.get("body", "") or ""
+            existing_labels = [l.get("name", l) if isinstance(l, dict) else str(l) for l in issue.get("labels", [])]
 
-            # 跳过高已分类的
             if existing_labels:
                 continue
 
@@ -114,11 +113,10 @@ def main():
             if not new_labels:
                 continue
 
-            labels_str = ",".join(new_labels)
-            if update_issue(project_id, iid, {"labels": labels_str}):
+            if update_issue(GITCODE_ORG, repo_name, number, {"labels": ",".join(new_labels)}):
                 comment = f"  Issue Bot\n分类结果：`{', '.join(new_labels)}`"
-                add_note(project_id, iid, comment)
-                print(f"[{project_name}#{iid}] Labelled: {labels_str}")
+                add_comment(GITCODE_ORG, repo_name, number, comment)
+                print(f"[{repo_name}#{number}] Labelled: {','.join(new_labels)}")
                 total_updated += 1
 
     print(f"\nTotal issues updated: {total_updated}")
