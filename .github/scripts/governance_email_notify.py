@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from email_notify import send_email
 
-GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
 GITHUB_API = "https://api.github.com"
 HEADERS = {
     "Authorization": f"Bearer {GITHUB_TOKEN}",
@@ -493,6 +493,10 @@ def build_html(config, person_login, person_data, archivable, today):
 
 
 def main():
+    if not GITHUB_TOKEN:
+        print("ERROR: GITHUB_TOKEN is required (set in .env or environment)")
+        sys.exit(1)
+
     config = load_config()
     repo_records = collect_data(config)
     persons = group_by_person(repo_records)
