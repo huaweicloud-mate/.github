@@ -233,7 +233,7 @@ def build_html(config, person_login, person_data, archivable, today):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GitHub 社区仓库治理规范配置提醒</title>
+<title>huaweicloud-mate 社区仓库治理规范配置提醒</title>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{
@@ -244,7 +244,7 @@ def build_html(config, person_login, person_data, archivable, today):
     padding: 32px 16px;
   }}
   .email-container {{
-    max-width: 720px;
+    max-width: 960px;
     margin: 0 auto;
     background: #ffffff;
     border-radius: 12px;
@@ -373,7 +373,7 @@ def build_html(config, person_login, person_data, archivable, today):
 
   <div class="header">
     <span class="tag">社区治理 · 整改通知</span>
-    <h1>GitHub 社区仓库治理规范配置提醒</h1>
+    <h1>huaweicloud-mate 社区仓库治理规范配置提醒</h1>
     <p class="subtitle">请核对您关联的仓库与角色人员，并按规范完成权限配置整改</p>
   </div>
 
@@ -514,7 +514,7 @@ def main():
     sent_count = 0
     for login, data in sorted(persons.items()):
         email = config.get("emails", {}).get(login, "")
-        subject = f"[社区治理整改] 仓库权限配置核对通知 — {today.strftime('%Y-%m-%d')}"
+        subject = f"[huaweicloud-mate 社区治理整改] 仓库权限配置核对通知 — {today.strftime('%Y-%m-%d')}"
         html_body = build_html(config, login, data, archivable, today)
 
         if DRY_RUN:
