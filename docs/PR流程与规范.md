@@ -223,7 +223,11 @@ git commit -S -m "feat: xxx"
 
 ## 八、PR 模板
 
-组织级模板位于 `.github/PULL_REQUEST_TEMPLATE.md`，创建 PR 时自动填充。建议包含：
+组织级模板位于 `huaweicloud-mate/.github/.github/PULL_REQUEST_TEMPLATE.md`。
+
+> **注意**：GitHub 的组织级默认模板只在通过 Web UI 创建仓库时自动注入。通过建仓流程（API）创建的仓库不会自动获得 PR 模板，由 `repo_creator.py` 在建仓时注入 `.github/PULL_REQUEST_TEMPLATE.md`。
+
+建议模板内容：
 
 ```markdown
 ## 变更说明
