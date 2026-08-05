@@ -412,13 +412,13 @@ def build_html(config, person_login, person_data, archivable, today):
         <td class="role-admin">Admin（管理员）</td>
         <td>全部管理权限，含危险设置（删除仓库、强制推送等）</td>
         <td>仓库 Owner、社区指定负责人</td>
-        <td>数量严格控制在 <strong>2–3 人</strong>；非必要不授予 Admin</td>
+        <td>数量严格控制在 <strong>1–2 人</strong>；非必要不授予 Admin</td>
       </tr>
       <tr>
         <td class="role-maintain">Maintain（维护者）</td>
         <td>可合并 PR、管理 Issue、推送受保护分支（经审核后）</td>
         <td>核心贡献者、模块负责人</td>
-        <td>按模块 / 职责范围分配，<strong>需配置 CODEOWNERS</strong></td>
+        <td>按模块 / 职责范围分配，控制在 <strong>2–3 人</strong>；<strong>需配置 CODEOWNERS</strong></td>
       </tr>
       <tr>
         <td class="role-write">Write / Triage（写入 / 分类）</td>
