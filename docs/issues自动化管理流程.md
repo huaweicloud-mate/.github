@@ -92,7 +92,7 @@ status/completed        → 已验证 / 管理员关闭
 
 | 文件 | 作用 |
 |------|------|
-| `workflows/stale.yml` | Stale bot 工作流 |
+| `workflows/stale-manager.yml` | Stale 集中管理工作流（组织级） |
 | `configs/stale-rules.yml` | 过期天数配置 |
 | `workflows/status-transition.yml` | 状态流转工作流 |
 
@@ -130,7 +130,6 @@ status/completed        → 已验证 / 管理员关闭
 | 文件 | 作用 |
 |------|------|
 | `workflows/feishu-notify.yml` | 可复用飞书+邮件通知工作流 |
-| `workflows/issue-notify.yml` | Issue 事件 → 通知触发 |
 | `scripts/feishu_notify.py` | 飞书卡片发送 |
 | `scripts/email_notify.py` | SMTP 邮件发送（Markdown→HTML） |
 | `configs/feishu-rules.yml` | 通知规则配置 |
@@ -289,10 +288,10 @@ reports/
 | Workflow | 触发方式 | 频率 |
 |----------|---------|------|
 | `triage-issue.yml` | Issue opened | 实时 |
-| `issue-notify.yml` | Issue opened/closed/labeled | 实时 |
 | `feishu-notify.yml` | workflow_call / workflow_dispatch | 按需 |
 | `sla-monitor.yml` | schedule | 每小时 |
-| `stale.yml` | schedule | 每天 02:00 UTC |
+| `stale-manager.yml` | schedule | 每周一 02:30 UTC |
+| `daily-reminder.yml` | schedule | 工作日 01:00 UTC |
 | `status-transition.yml` | PR opened/closed + issue closed | 实时 |
 | `issue-stats.yml` | schedule / workflow_dispatch | 每周一 09:00 UTC |
 | `weekly-report.yml` | schedule | 每周一 09:00 UTC |
