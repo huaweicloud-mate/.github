@@ -1,0 +1,42 @@
+# 治理整改邮件通知配置
+# 说明：GitHub API 无法获取成员邮箱（隐私保护），此处维护 用户名 → 邮箱 映射。
+# 邮箱来源：组织 git 提交记录、社区联系人公示。
+
+# 组织信息
+org: huaweicloud-mate
+
+# 发件人署名
+sender: 社区运维团队
+
+# 联系人（邮件页脚展示）
+contacts:
+  - name: 刘菲
+    employee_id: 00978084
+    email: liufei268@huawei.com
+  - name: 张爽
+    employee_id: 60077038
+    email: zhangshuang77@h-partners.com
+
+# 收件人邮箱映射（GitHub 用户名 → 邮箱）
+# 未配置邮箱的负责人将只打印清单不发送（避免发错人）
+emails:
+  shuangheaven: 114271379@qq.com
+  lf624: liufei268@huawei.com
+  CheneyYin: cheneyyin@hotmail.com
+  cecilyw: 2290044657@qq.com
+  coconut1919: 985862580@qq.com
+  fangzhibin-agent: 2523148828@qq.com
+  Flycoder-web: liufeibronya@outlook.com
+  guangkunBryant: 15538291182@163.com
+  xuexiaowen-git: xuexiaowen@huawei-partners.com
+  zrr000212-netizen: zrr000212@gmail.com
+  BeyondTianxingjian: yuanbeyond@163.com
+
+# 整改参数
+remediation:
+  # 无更新仓库归档阈值（天）：pushed_at 距今超过该天数 → 列入归档提醒
+  archive_threshold_days: 365
+  # 归档整改期限（天）：自邮件发出之日起
+  archive_deadline_days: 30
+  # 台账反馈期限（天）
+  feedback_deadline_days: 3

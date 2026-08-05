@@ -1,0 +1,49 @@
+name: Governance Email Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (only generate preview, no sending)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  email-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pyyaml requests
+
+      - name: Run Governance Email Notification
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          if [ "${{ inputs.dry_run }}" == "true" ]; then
+            python .github/scripts/governance_email_notify.py --dry
+          else
+            python .github/scripts/governance_email_notify.py
+          fi
+
+      - name: Upload dry-run previews
+        if: ${{ inputs.dry_run == true }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-email-previews
+          path: output/governance_email_*.html
+          retention-days: 7
