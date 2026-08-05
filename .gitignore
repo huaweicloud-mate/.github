@@ -1,0 +1,7 @@
+# 本地敏感配置
+.env
+
+# 脚本运行产物
+output/
+__pycache__/
+*.pyc
