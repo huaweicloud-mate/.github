@@ -120,6 +120,8 @@
 
 ## 三、仓库创建标准
 
+> **详细建仓流程请参见 [建仓流程文档](./docs/建仓流程文档.md)**，本章仅列出核心要点。
+
 ### 3.1 新建仓库流程
 
 ```
@@ -128,7 +130,7 @@
 
 ### 3.2 创建时自动配置清单
 
-新建仓库应自动包含以下配置（可通过建仓脚本自动化）：
+新建仓库应自动包含以下配置（由建仓流程 `repo_creator.py` 自动注入）：
 
 - [ ] Apache-2.0 LICENSE 文件
 - [ ] README.md（含项目简介 + 安装 + 快速开始）
@@ -136,7 +138,13 @@
 - [ ] .github/ISSUE_TEMPLATE/feature_request.yml
 - [ ] .github/ISSUE_TEMPLATE/config.yml
 - [ ] .github/PULL_REQUEST_TEMPLATE.md
+- [ ] .github/CODEOWNERS（PR 自动分配 Reviewer）
 - [ ] .github/dependabot.yml
+- [ ] .github/workflows/ci.yml（CI：lint → test → build）
+- [ ] .github/workflows/triage-issue.yml（产品级）
+- [ ] .github/workflows/status-transition.yml（产品级）
+- [ ] .github/workflows/sync-to-gitcode.yml（产品级）
+- [ ] 安全告警 + 自动修复（Dependabot alerts/fixes）
 - [ ] 仓库描述（Description）
 - [ ] 至少 3 个 Topics 标签
 - [ ] 默认分支 `main`
