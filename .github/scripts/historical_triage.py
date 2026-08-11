@@ -25,11 +25,12 @@ KEYWORDS = {
 
 AREAS = {
     "area/api": ["api", "接口", "rest", "endpoint"],
-    "area/frontend": ["ui", "前端", "frontend", "web", "页面", "界面", "布局", "按钮"],
+    "area/web": ["ui", "前端", "frontend", "web", "页面", "界面", "布局", "按钮"],
     "area/ci-cd": ["ci", "cd", "pipeline", "workflow", "action", "构建", "部署", "deploy"],
     "area/sdk": ["sdk", "client", "library", "包", "依赖"],
     "area/security": ["security", "安全", "漏洞", "vulnerability", "auth", "token"],
     "area/performance": ["performance", "性能", "慢", "优化", "perf"],
+    "area/database": ["database", "数据库", "存储", "storage", "db"],
 }
 
 

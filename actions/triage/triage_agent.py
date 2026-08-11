@@ -104,14 +104,20 @@ def rule_based_triage(title, body, existing_labels):
         priority = "medium"
 
     area = None
-    if any(w in combined for w in ["sdk", "api", "client"]):
+    if any(w in combined for w in ["sdk", "client", "library"]):
         area = "sdk"
-    elif any(w in combined for w in ["eval", "benchmark", "score"]):
-        area = "evaluation"
+    elif any(w in combined for w in ["ui", "frontend", "web", "dashboard", "interface"]):
+        area = "web"
+    elif any(w in combined for w in ["api", "rest", "endpoint"]):
+        area = "api"
     elif any(w in combined for w in ["security", "vulnerability", "cve"]):
         area = "security"
     elif any(w in combined for w in ["ci", "workflow", "action", "deploy"]):
-        area = "ci"
+        area = "ci-cd"
+    elif any(w in combined for w in ["performance", "benchmark", "slow"]):
+        area = "performance"
+    elif any(w in combined for w in ["database", "storage", "db"]):
+        area = "database"
 
     return {
         "type": issue_type,
@@ -185,10 +191,10 @@ def main():
     repo_labels = get_existing_labels(repo, token)
 
     TYPE_LABELS = {
-        "bug": ("bug", "d73a4a"),
-        "feature": ("enhancement", "a2eeef"),
-        "question": ("question", "d876e3"),
-        "documentation": ("documentation", "0075ca"),
+        "bug": ("type/bug", "d73a4a"),
+        "feature": ("type/feature", "a2eeef"),
+        "question": ("type/question", "d876e3"),
+        "documentation": ("type/documentation", "0075ca"),
         "duplicate": ("duplicate", "cfd3d7"),
     }
     PRIORITY_LABELS = {
@@ -198,12 +204,13 @@ def main():
         "low": ("priority/low", "0e8a16"),
     }
     AREA_LABELS = {
+        "api": ("area/api", "1d76db"),
+        "web": ("area/web", "1d76db"),
+        "ci-cd": ("area/ci-cd", "1d76db"),
         "sdk": ("area/sdk", "1d76db"),
-        "evaluation": ("area/evaluation", "1d76db"),
-        "community": ("area/community", "5319e7"),
         "security": ("area/security", "b0063c"),
-        "infrastructure": ("area/infrastructure", "2d7d46"),
-        "ci": ("area/infrastructure", "2d7d46"),
+        "performance": ("area/performance", "1d76db"),
+        "database": ("area/database", "1d76db"),
     }
 
     available_types = ", ".join(TYPE_LABELS.keys())

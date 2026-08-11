@@ -12,21 +12,31 @@ jobs:
   triage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout .github
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/.github
+          path: .github-repo
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Issue Bot
         uses: huaweicloud-mate/.github/actions/issue-bot@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          config_path: "configs/triage-rules.yml"
+          config_path: ".github-repo/configs/triage-rules.yml"
 
       - name: Mark as triaged
         uses: actions/github-script@v7
         with:
           script: |
-            const labels = context.payload.issue.labels.map(l => l.name);
-            if (labels.includes('status/triaged') || labels.includes('type/bug') || labels.includes('type/feature')) {
-              const currentLabels = context.payload.issue.labels.map(l => l.name);
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const currentLabels = issue.labels.map(l => l.name);
+            if (currentLabels.includes('status/triaged') || currentLabels.includes('type/bug') || currentLabels.includes('type/feature')) {
               const newLabels = currentLabels
                 .filter(l => l !== 'status/pending')
                 .concat('status/triaged');

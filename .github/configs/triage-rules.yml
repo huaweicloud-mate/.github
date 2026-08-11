@@ -2,7 +2,7 @@
 
 # 标签映射规则
 label_rules:
-  - keywords: ["bug", "错误", "crash", "崩溃", "报错", "异常"]
+  - keywords: ["bug", "错误", "crash", "崩溃", "报错", "异常", "失败", "故障", "构建失败", "部署失败"]
     label: "type/bug"
     priority_hint: "high"
 
@@ -38,7 +38,7 @@ area_rules:
   - keywords: ["api", "接口", "rest", "endpoint"]
     label: "area/api"
 
-  - keywords: ["web", "前端", "frontend", "ui", "页面", "界面"]
+  - keywords: ["web", "前端", "frontend", "页面", "界面", "ui/", "ui ", "ui界面"]
     label: "area/web"
 
   - keywords: ["ci", "cd", "pipeline", "workflow", "action", "构建", "部署", "deploy"]
