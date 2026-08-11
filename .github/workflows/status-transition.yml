@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   link-pr-to-issue:
-    if: github.event.pull_request
+    if: github.event.pull_request && (github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.action == 'reopened')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
@@ -91,13 +91,38 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const labels = context.payload.issue.labels.map(l => l.name);
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const issueNumber = context.issue.number;
+            let closedByMergedPR = false;
+            for (const phrase of [`Fixes #${issueNumber}`, `Closes #${issueNumber}`, `Resolves #${issueNumber}`, `fixes #${issueNumber}`, `closes #${issueNumber}`, `resolves #${issueNumber}`]) {
+              const { data: search } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} type:pr "${phrase}"`
+              });
+              if (search.total_count > 0) { closedByMergedPR = true; break; }
+            }
+            if (!closedByMergedPR) {
+              await new Promise(r => setTimeout(r, 15000));
+              for (const phrase of [`Fixes #${issueNumber}`, `Closes #${issueNumber}`, `Resolves #${issueNumber}`, `fixes #${issueNumber}`, `closes #${issueNumber}`, `resolves #${issueNumber}`]) {
+                const { data: search } = await github.rest.search.issuesAndPullRequests({
+                  q: `repo:${owner}/${repo} type:pr "${phrase}"`
+                });
+                if (search.total_count > 0) { closedByMergedPR = true; break; }
+              }
+            }
+            const currentIssue = await github.rest.issues.get({
+              owner: owner,
+              repo: repo,
+              issue_number: issueNumber
+            });
+            const labels = (currentIssue.data.labels || []).map(l => l.name);
+            const nextStatus = closedByMergedPR ? 'status/resolved' : 'status/completed';
             const newLabels = labels
               .filter(l => !l.startsWith('status/'))
-              .concat('status/completed');
+              .concat(nextStatus);
             await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
+              owner: owner,
+              repo: repo,
+              issue_number: issueNumber,
               labels: [...new Set(newLabels)]
             });

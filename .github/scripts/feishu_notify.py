@@ -175,11 +175,13 @@ def _build_alert_card(event_type, body, issue_url, issue_number, issue_title):
 
 
 def _build_report_card(event_type, subject, body):
-    """构建报表类卡片"""
+    """构建报表类卡片（带长度保护，避免超出飞书消息限制）"""
     color = COLORS.get(event_type, "turquoise")
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
     sections = _split_sections(body)
 
+    # 飞书 interactive 卡片 content 大小限制（约 30KB），预留余量
+    MAX_CONTENT_CHARS = 25000
     elements = []
 
     for i, section in enumerate(sections):
@@ -190,11 +192,7 @@ def _build_report_card(event_type, subject, body):
             continue
 
         # section 标题
-        elements.append({
-            "tag": "markdown",
-            "content": f"**▎{heading}**"
-        })
-
+        heading_el = {"tag": "markdown", "content": f"**▎{heading}**"}
         content_lines = []
 
         # 检测是否是表格
@@ -203,18 +201,31 @@ def _build_report_card(event_type, subject, body):
             if table_text:
                 content_lines.append(table_text)
         else:
-            for line in lines:
-                if line.startswith('- '):
-                    content_lines.append(line)
-                else:
-                    content_lines.append(line)
+            content_lines.extend(lines)
 
         md_content = "\n".join(content_lines)
-        if md_content.strip():
-            elements.append({
-                "tag": "markdown",
-                "content": md_content
-            })
+        content_el = {"tag": "markdown", "content": md_content} if md_content.strip() else None
+
+        # 估算当前累计大小，超限则截断
+        pending = [heading_el] + ([content_el] if content_el else [])
+        pending_json = json.dumps(pending, ensure_ascii=False)
+        if len(json.dumps(elements, ensure_ascii=False)) + len(pending_json) > MAX_CONTENT_CHARS:
+            # 内容超限：截断当前 section 内容并加提示
+            remain = MAX_CONTENT_CHARS - len(json.dumps(elements, ensure_ascii=False))
+            if remain > 200:
+                truncated = heading_el
+                cut_content = md_content[:max(100, remain - 200)]
+                truncated = {
+                    "tag": "markdown",
+                    "content": f"**▎{heading}**（内容过长，已截断）\n{cut_content}\n…"
+                }
+                elements.append(truncated)
+            elements.append({"tag": "note", "elements": [{"tag": "plain_text", "content": "⚠️ 内容过多已截断，完整内容请查看邮件"}]})
+            break
+
+        elements.append(heading_el)
+        if content_el:
+            elements.append(content_el)
 
         if i < len(sections) - 1:
             elements.append({"tag": "hr"})
